@@ -2,7 +2,13 @@
 add_action('admin_menu', 'add_socomarca_menu');
 
 function render_configuration_page() {
-    require_once plugin_dir_path(__FILE__) . 'templates/configuration.html';
+    if(isset($_POST['submit'])) {
+        update_option('sm_company_code', $_POST['sm_company_code']);
+        update_option('sm_company_rut', $_POST['sm_company_rut']);
+    }
+    $company_code = get_option('sm_company_code', '');      
+    $company_rut = get_option('sm_company_rut', '');
+    require_once plugin_dir_path(__FILE__) . 'templates/configuration.php';
 }
 
 add_action('wp_ajax_validate_connection', 'validateERPConnection');

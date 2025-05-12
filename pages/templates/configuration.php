@@ -31,3 +31,29 @@
         </tr>
     </tbody>
 </table>
+
+
+<h2 class="title">Configuracion empresa</h2>
+<form method="post" action="#">
+    <table class="form-table">
+        <tbody>
+            <tr>
+                <th>
+                    Código empresa
+                </th>
+                <td>
+                    <input name="sm_company_code" type="text" id="sm_company_code" value="<?php echo esc_attr($company_code); ?>" class="regular-text code">
+                </td>
+            </tr>
+            <tr>
+                <th>
+                    RUT empresa
+                </th>
+                <td>
+                    <input name="sm_company_rut" type="text" id="sm_company_rut" value="<?php echo esc_attr($company_rut); ?>" class="regular-text code">
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <p class="submit"><input type="submit" name="submit" id="submit" class="button button-primary" value="Guardar cambios"></p>
+</form>
