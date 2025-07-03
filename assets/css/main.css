@@ -52,3 +52,30 @@
     width: 0%;
     background-color: gold;
 }
+
+/* Estilos para tabs de WordPress personalizados */
+.tab-content {
+    margin-top: 20px;
+    padding: 20px 0;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Botón deshabilitado */
+.button.disabled {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Espaciado entre elementos */
+.sm_sync_result {
+    margin-left: 10px;
+    vertical-align: middle;
+}
+
+.sm_sync_status_report {
+    font-size: 13px;
+    white-space: nowrap;
+}

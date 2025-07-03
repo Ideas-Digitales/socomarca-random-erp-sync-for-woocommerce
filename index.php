@@ -18,8 +18,9 @@ if (!defined('ABSPATH')) {
     exit; 
 }
 
+
 // Verifica si WooCommerce está activo
-if (!class_exists('WooCommerce')) {
+if (!class_exists('woocommerce')) {
     add_action('admin_notices', 'socomarca_random_erp_sync_for_woocommerce_admin_notice');
     function socomarca_random_erp_sync_for_woocommerce_admin_notice() {
         echo '<div class="error"><p>' . __('Socomarca Random ERP Sync for WooCommerce requiere WooCommerce para funcionar.', 'socomarca-random-erp-sync-for-woocommerce') . '</p></div>';

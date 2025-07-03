@@ -8,9 +8,10 @@ class ErpAuthentication {
     private $api_password;
 
     public function __construct() {
-        $this->api_url = API_URL;
-        $this->api_user = API_USER;
-        $this->api_password = API_PASSWORD;
+        // Usar valores por defecto si no están configurados en WordPress
+        $this->api_url = get_option('sm_api_url', 'http://seguimiento.random.cl:3003');
+        $this->api_user = get_option('sm_api_user', 'demo@random.cl');
+        $this->api_password = get_option('sm_api_password', 'd3m0r4nd0m3RP');
     }
     
     public function authenticate() {
@@ -35,20 +36,226 @@ class ErpAuthentication {
     }
 
     public function getEntities() {
+        // Asegurar que tenemos un token válido
+        $token = get_option('random_erp_token');
+        if (empty($token)) {
+            $token = $this->authenticate();
+            if (!$token) {
+                return false;
+            }
+        }
+        
         $client = new Client();
         $headers = [
-          //'Content-Type' => 'application/json',
-          'Authorization' => 'Bearer ' . get_option('random_erp_token')
+          'Authorization' => 'Bearer ' . $token
         ];
-        $request = new Request('GET', $this->api_url . '/web32/entidades?empresa=01&rut=134549696', $headers);
-        $res = $client->sendAsync($request)->wait();
-        $body = json_decode($res->getBody(), true);
-        if(is_array($body)) {
-            return [
-              'quantity' => count($body),
-              'items' => $body
-            ];
+        $company_code = get_option('sm_company_code', '01');
+        $company_rut = get_option('sm_company_rut', '134549696');
+        
+        try {
+            $request = new Request('GET', $this->api_url . '/web32/entidades?empresa=' . $company_code . '&rut=' . $company_rut, $headers);
+            $res = $client->sendAsync($request)->wait();
+            $body = json_decode($res->getBody(), true);
+            if(is_array($body)) {
+                return [
+                  'quantity' => count($body),
+                  'items' => $body
+                ];
+            }
+        } catch (Exception $e) {
+            // Si falla, intentar re-autenticar
+            $token = $this->authenticate();
+            if ($token) {
+                $headers['Authorization'] = 'Bearer ' . $token;
+                $request = new Request('GET', $this->api_url . '/web32/entidades?empresa=' . $company_code . '&rut=' . $company_rut, $headers);
+                $res = $client->sendAsync($request)->wait();
+                $body = json_decode($res->getBody(), true);
+                if(is_array($body)) {
+                    return [
+                      'quantity' => count($body),
+                      'items' => $body
+                    ];
+                }
+            }
         }
         return false;
+    }
+
+    public function createUsersFromEntities() {
+        error_log('createUsersFromEntities: Iniciando...');
+        
+        $entities = $this->getEntities();
+        
+        error_log('createUsersFromEntities: Entidades obtenidas - ' . print_r($entities, true));
+        
+        if (!$entities || !is_array($entities['items'])) {
+            error_log('createUsersFromEntities: Error - No se pudieron obtener las entidades');
+            return [
+                'success' => false,
+                'message' => 'No se pudieron obtener las entidades'
+            ];
+        }
+        
+        // Guardar las entidades en cache para procesamiento por lotes
+        update_option('sm_entities_cache', $entities['items']);
+        
+        error_log('createUsersFromEntities: Éxito - ' . $entities['quantity'] . ' entidades guardadas en cache');
+        
+        return [
+            'success' => true,
+            'total' => $entities['quantity'],
+            'message' => $entities['quantity'] . ' entidades obtenidas. Iniciando creación de usuarios...'
+        ];
+    }
+    
+    public function processBatchUsers($offset = 0, $batch_size = 10) {
+        $cached_entities = get_option('sm_entities_cache', []);
+        
+        if (empty($cached_entities)) {
+            return [
+                'success' => false,
+                'message' => 'No hay entidades en cache'
+            ];
+        }
+        
+        $batch = array_slice($cached_entities, $offset, $batch_size);
+        $created_users = 0;
+        $updated_users = 0;
+        $errors = [];
+        
+        // Obtener contadores acumulativos
+        $total_created = intval(get_option('sm_total_created_users', 0));
+        $total_updated = intval(get_option('sm_total_updated_users', 0));
+        
+        foreach ($batch as $entidad) {
+            try {
+                $rut = isset($entidad['KOEN']) ? $entidad['KOEN'] : null;
+                
+                if (empty($rut)) {
+                    continue;
+                }
+                
+                // Buscar usuario existente por RUT en meta_value
+                $existing_user = get_users([
+                    'meta_key' => 'rut',
+                    'meta_value' => $rut,
+                    'number' => 1
+                ]);
+                
+                $user_data = [
+                    'user_login' => $rut,
+                    //'user_email' => isset($entidad['EMAIL']) ? $entidad['EMAIL'] : $rut . '@temp.com',
+                    'user_email' => $rut . '@temp.com', //Temporal hasta que se defina que se hace con emails repetidos
+                    'display_name' => isset($entidad['NOKOEN']) ? $entidad['NOKOEN'] : '',
+                    'first_name' => isset($entidad['NOKOEN']) ? $entidad['NOKOEN'] : '',
+                    'role' => 'customer'
+                ];
+                
+                if (!empty($existing_user)) {
+                    // Actualizar usuario existente
+                    $user_id = $existing_user[0]->ID;
+                    $user_data['ID'] = $user_id;
+                    $result = wp_update_user($user_data);
+                    
+                    if (is_wp_error($result)) {
+                        $errors[] = 'Error actualizando usuario ' . $rut . ': ' . $result->get_error_message();
+                        continue;
+                    }
+                    
+                    $updated_users++;
+                } else {
+                    // Crear nuevo usuario
+                    $user_data['user_pass'] = wp_generate_password();
+                    $user_id = wp_insert_user($user_data);
+                    
+                    if (is_wp_error($user_id)) {
+                        $errors[] = 'Error creando usuario ' . $rut . ': ' . $user_id->get_error_message();
+                        continue;
+                    }
+                    
+                    $created_users++;
+                }
+                
+                // Actualizar meta campos
+                update_user_meta($user_id, 'rut', $rut);
+                update_user_meta($user_id, 'business_name', isset($entidad['SIEN']) ? $entidad['SIEN'] : '');
+                update_user_meta($user_id, 'phone', isset($entidad['FOEN']) ? $entidad['FOEN'] : '');
+                update_user_meta($user_id, 'is_active', true);
+                
+            } catch (Exception $e) {
+                $errors[] = 'Error procesando entidad: ' . $e->getMessage();
+            }
+        }
+        
+        $processed = $offset + count($batch);
+        $total = count($cached_entities);
+        $is_complete = $processed >= $total;
+        
+        // Actualizar contadores acumulativos
+        $total_created += $created_users;
+        $total_updated += $updated_users;
+        update_option('sm_total_created_users', $total_created);
+        update_option('sm_total_updated_users', $total_updated);
+        
+        // Limpiar cache y contadores si terminamos
+        if ($is_complete) {
+            delete_option('sm_entities_cache');
+            delete_option('sm_total_created_users');
+            delete_option('sm_total_updated_users');
+        }
+        
+        return [
+            'success' => true,
+            'created' => $created_users,
+            'updated' => $updated_users,
+            'total_created' => $total_created,
+            'total_updated' => $total_updated,
+            'errors' => $errors,
+            'processed' => $processed,
+            'total' => $total,
+            'is_complete' => $is_complete,
+            'message' => "Lote procesado: $created_users creados, $updated_users actualizados"
+        ];
+    }
+    
+    public function deleteAllUsersExceptAdmin() {
+        $deleted_count = 0;
+        $errors = [];
+        
+        try {
+            // Obtener todos los usuarios excepto administradores
+            $users = get_users([
+                'role__not_in' => ['administrator', 'super_admin'],
+                'fields' => ['ID', 'user_login']
+            ]);
+            
+            foreach ($users as $user) {
+                // Doble verificación: no borrar usuarios con capacidad de administrador
+                if (!user_can($user->ID, 'manage_options')) {
+                    $result = wp_delete_user($user->ID);
+                    if ($result) {
+                        $deleted_count++;
+                        error_log("Usuario eliminado: {$user->user_login} (ID: {$user->ID})");
+                    } else {
+                        $errors[] = "Error eliminando usuario: {$user->user_login}";
+                    }
+                } else {
+                    error_log("Usuario admin protegido: {$user->user_login} (ID: {$user->ID})");
+                }
+            }
+            
+            return [
+                'success' => true,
+                'deleted' => $deleted_count,
+                'errors' => $errors,
+                'message' => "Se eliminaron $deleted_count usuarios exitosamente"
+            ];
+            
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Error eliminando usuarios: ' . $e->getMessage()
+            ];
+        }
     }
 }
