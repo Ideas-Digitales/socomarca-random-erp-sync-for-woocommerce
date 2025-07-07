@@ -1,95 +1,37 @@
 <?php
-use GuzzleHttp\Client;
-use GuzzleHttp\Psr7\Request;
-class ErpAuthentication {
 
-    private $api_url;
-    private $api_user;
-    private $api_password;
+namespace Socomarca\RandomERP\Services;
 
-    public function __construct() {
-        // Usar valores por defecto si no están configurados en WordPress
-        $this->api_url = get_option('sm_api_url', 'http://seguimiento.random.cl:3003');
-        $this->api_user = get_option('sm_api_user', 'demo@random.cl');
-        $this->api_password = get_option('sm_api_password', 'd3m0r4nd0m3RP');
-    }
+class EntityService extends BaseApiService {
     
-    public function authenticate() {
-        $client = new Client();
-        $headers = [
-          'Content-Type' => 'application/x-www-form-urlencoded',
-        ];
-        $options = [
-        'form_params' => [
-          'username' => $this->api_user,
-          'password' => $this->api_password,
-          'ttl' => '36000000'
-        ]];
-        $request = new Request('POST', $this->api_url . '/login', $headers);
-        $res = $client->sendAsync($request, $options)->wait();
-        $body = json_decode($res->getBody(), true);
-        if(isset($body['token'])) {
-            update_option('random_erp_token', $body['token']);
-            return $body['token'];
-        }
-        return false;
-    }
-
     public function getEntities() {
-        // Asegurar que tenemos un token válido
-        $token = get_option('random_erp_token');
-        if (empty($token)) {
-            $token = $this->authenticate();
-            if (!$token) {
-                return false;
-            }
-        }
+        error_log('EntityService: Obteniendo entidades...');
         
-        $client = new Client();
-        $headers = [
-          'Authorization' => 'Bearer ' . $token
-        ];
         $company_code = get_option('sm_company_code', '01');
         $company_rut = get_option('sm_company_rut', '134549696');
         
-        try {
-            $request = new Request('GET', $this->api_url . '/web32/entidades?empresa=' . $company_code . '&rut=' . $company_rut, $headers);
-            $res = $client->sendAsync($request)->wait();
-            $body = json_decode($res->getBody(), true);
-            if(is_array($body)) {
-                return [
-                  'quantity' => count($body),
-                  'items' => $body
-                ];
-            }
-        } catch (Exception $e) {
-            // Si falla, intentar re-autenticar
-            $token = $this->authenticate();
-            if ($token) {
-                $headers['Authorization'] = 'Bearer ' . $token;
-                $request = new Request('GET', $this->api_url . '/web32/entidades?empresa=' . $company_code . '&rut=' . $company_rut, $headers);
-                $res = $client->sendAsync($request)->wait();
-                $body = json_decode($res->getBody(), true);
-                if(is_array($body)) {
-                    return [
-                      'quantity' => count($body),
-                      'items' => $body
-                    ];
-                }
-            }
+        $endpoint = "/web32/entidades?empresa={$company_code}&rut={$company_rut}";
+        $entities = $this->makeApiRequest($endpoint);
+        
+        if ($entities !== false && is_array($entities)) {
+            error_log('EntityService: ' . count($entities) . ' entidades obtenidas');
+            return [
+                'quantity' => count($entities),
+                'items' => $entities
+            ];
         }
+        
+        error_log('EntityService: Error - No se pudieron obtener entidades válidas');
         return false;
     }
-
+    
     public function createUsersFromEntities() {
-        error_log('createUsersFromEntities: Iniciando...');
+        error_log('EntityService: Iniciando creación de usuarios...');
         
         $entities = $this->getEntities();
         
-        error_log('createUsersFromEntities: Entidades obtenidas - ' . print_r($entities, true));
-        
         if (!$entities || !is_array($entities['items'])) {
-            error_log('createUsersFromEntities: Error - No se pudieron obtener las entidades');
+            error_log('EntityService: Error - No se pudieron obtener las entidades');
             return [
                 'success' => false,
                 'message' => 'No se pudieron obtener las entidades'
@@ -99,7 +41,7 @@ class ErpAuthentication {
         // Guardar las entidades en cache para procesamiento por lotes
         update_option('sm_entities_cache', $entities['items']);
         
-        error_log('createUsersFromEntities: Éxito - ' . $entities['quantity'] . ' entidades guardadas en cache');
+        error_log('EntityService: Éxito - ' . $entities['quantity'] . ' entidades guardadas en cache');
         
         return [
             'success' => true,
@@ -144,8 +86,7 @@ class ErpAuthentication {
                 
                 $user_data = [
                     'user_login' => $rut,
-                    //'user_email' => isset($entidad['EMAIL']) ? $entidad['EMAIL'] : $rut . '@temp.com',
-                    'user_email' => $rut . '@temp.com', //Temporal hasta que se defina que se hace con emails repetidos
+                    'user_email' => $rut . '@temp.com',
                     'display_name' => isset($entidad['NOKOEN']) ? $entidad['NOKOEN'] : '',
                     'first_name' => isset($entidad['NOKOEN']) ? $entidad['NOKOEN'] : '',
                     'role' => 'customer'

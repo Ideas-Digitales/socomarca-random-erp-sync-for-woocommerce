@@ -40,6 +40,33 @@
                         </span>
                     </td>
                 </tr>
+                <tr>
+                    <th>
+                        Categorías
+                    </th>
+                    <td class="sm_sync" data-action="sm_get_categories">
+                        <a class="button" href="#">Sincronizar categorías</a>
+                        <span class="sm_sync_result"></span>
+                    </td>
+                </tr>
+                <tr>
+                    <th>
+                        Productos
+                    </th>
+                    <td class="sm_sync_products">
+                        <a class="button" href="#">Sincronizar productos</a>
+                        <span class="sm_sync_result"></span>
+                        <span class="sm_sync_progress">
+                            <div class="sm_sync_progress_bar">
+                                <span class="sm_sync_progress_bar_text">0/0</span>
+                                <div class="sm_sync_progress_bar_fill"></div>
+                            </div>
+                            <span class="sm_sync_status_report" style="margin-left: 10px; font-weight: bold; color: #0073aa;">
+                                [0 creados / 0 actualizados]
+                            </span>
+                        </span>
+                    </td>
+                </tr>
                 </tbody>
             </table>
             <h2>Botones para reiniciar las pruebas</h2>
@@ -60,6 +87,34 @@
                         </p>
                     </td>
                 </tr>
+                <tr>
+                    <th>
+                        Gestión de Categorías
+                    </th>
+                    <td>
+                        <a class="button button-secondary" href="#" id="sm_delete_all_categories" style="background-color: #dc3545; border-color: #dc3545; color: white;">
+                            Eliminar todas las categorías de WooCommerce
+                        </a>
+                        <span id="sm_delete_categories_result"></span>
+                        <p class="description" style="color: #d63384;">
+                            <strong>⚠️ PELIGRO:</strong> Esta acción eliminará PERMANENTEMENTE todas las categorías de productos. No se puede deshacer.
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <th>
+                        Gestión de Productos
+                    </th>
+                    <td>
+                        <a class="button button-secondary" href="#" id="sm_delete_all_products" style="background-color: #dc3545; border-color: #dc3545; color: white;">
+                            Eliminar todos los productos de WooCommerce
+                        </a>
+                        <span id="sm_delete_products_result"></span>
+                        <p class="description" style="color: #d63384;">
+                            <strong>⚠️ PELIGRO:</strong> Esta acción eliminará PERMANENTEMENTE todos los productos. No se puede deshacer.
+                        </p>
+                    </td>
+                </tr>
             </tbody>
         </table>
     </div>
@@ -68,6 +123,7 @@
     <div id="tab-config" class="tab-content" style="display: none;">
         <h3>Configuración Random ERP</h3>
         <form method="post" action="#">
+            <?php wp_nonce_field('socomarca_config'); ?>
             <table class="form-table">
                 <tbody>
                     <tr>

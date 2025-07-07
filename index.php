@@ -18,46 +18,75 @@ if (!defined('ABSPATH')) {
     exit; 
 }
 
+// Test inmediato
+error_log('=== SOCOMARCA ERP: Plugin cargándose ===');
+file_put_contents('/tmp/socomarca-debug.log', "Plugin cargándose: " . date('Y-m-d H:i:s') . "\n", FILE_APPEND);
 
-// Verifica si WooCommerce está activo
-if (!class_exists('woocommerce')) {
-    add_action('admin_notices', 'socomarca_random_erp_sync_for_woocommerce_admin_notice');
-    function socomarca_random_erp_sync_for_woocommerce_admin_notice() {
-        echo '<div class="error"><p>' . __('Socomarca Random ERP Sync for WooCommerce requiere WooCommerce para funcionar.', 'socomarca-random-erp-sync-for-woocommerce') . '</p></div>';
+// Definir constantes del plugin
+define('SOCOMARCA_ERP_PLUGIN_FILE', __FILE__);
+define('SOCOMARCA_ERP_PLUGIN_DIR', plugin_dir_path(__FILE__));
+define('SOCOMARCA_ERP_PLUGIN_URL', plugin_dir_url(__FILE__));
+define('SOCOMARCA_ERP_VERSION', '1.0.0');
+
+// Verificar WooCommerce pero sin return
+if (!class_exists('WooCommerce')) {
+    error_log('Socomarca ERP: WooCommerce no encontrado');
+    add_action('admin_notices', function() {
+        echo '<div class="error"><p>' . esc_html__('Socomarca Random ERP Sync for WooCommerce requiere WooCommerce para funcionar.', 'socomarca-random-erp-sync-for-woocommerce') . '</p></div>';
+    });
+} else {
+    error_log('Socomarca ERP: WooCommerce encontrado');
+}
+
+// Cargar Composer autoloader si existe (opcional ahora)
+if (file_exists(SOCOMARCA_ERP_PLUGIN_DIR . 'vendor/autoload.php')) {
+    require_once SOCOMARCA_ERP_PLUGIN_DIR . 'vendor/autoload.php';
+    error_log('Socomarca ERP: Composer autoloader cargado');
+} else {
+    error_log('Socomarca ERP: Composer autoloader no encontrado (usando WordPress HTTP API)');
+}
+
+// Cargar autoloader del plugin
+require_once SOCOMARCA_ERP_PLUGIN_DIR . 'src/Autoloader.php';
+Socomarca\RandomERP\Autoloader::getInstance()->register();
+error_log('Socomarca ERP: Autoloader del plugin cargado y registrado');
+
+// Inicializar el plugin
+use Socomarca\RandomERP\Plugin;
+
+// Inicializar plugin principal en lugar de función simple
+add_action('plugins_loaded', function() {
+    error_log('Socomarca ERP: Hook plugins_loaded ejecutándose');
+    
+    // Verificar versión de PHP sin return
+    if (version_compare(PHP_VERSION, '8.0', '<')) {
+        error_log('Socomarca ERP: Error - PHP version < 8.0');
+        add_action('admin_notices', function() {
+            echo '<div class="error"><p>' . esc_html__('Socomarca Random ERP Sync requiere PHP 8.0 o superior.', 'socomarca-random-erp-sync-for-woocommerce') . '</p></div>';
+        });
+    } else {
+        try {
+            // Inicializar el plugin
+            error_log('Socomarca ERP: Creando instancia del plugin');
+            Plugin::getInstance();
+            error_log('Socomarca ERP: Plugin instanciado exitosamente');
+        } catch (Exception $e) {
+            error_log('Socomarca ERP: Error al instanciar plugin: ' . $e->getMessage());
+            add_action('admin_notices', function() use ($e) {
+                echo '<div class="error"><p>Error en Socomarca ERP Plugin: ' . esc_html($e->getMessage()) . '</p></div>';
+            });
+        }
     }
-}
-
-// Registrar y cargar scripts
-function socomarca_random_erp_sync_scripts() {
-    wp_enqueue_script('socomarca-random-erp-sync-js',plugin_dir_url(__FILE__) . 'assets/js/main.js',array('jquery'),'1.0.0',true);
-    wp_enqueue_style('socomarca-random-erp-sync-css',plugin_dir_url(__FILE__) . 'assets/css/main.css',array(),'1.0.0');
-}
-add_action('admin_enqueue_scripts', 'socomarca_random_erp_sync_scripts');
+});
 
 
-//Vendor
-require_once plugin_dir_path(__FILE__) . 'vendor/autoload.php';
-
-//Classes
-require_once plugin_dir_path(__FILE__) . 'class/erp-authentication.php';
-
-//Pages
-require_once plugin_dir_path(__FILE__) . 'pages/pages.php';
-require_once plugin_dir_path(__FILE__) . 'pages/configuration.php';
-
-
-
-//Debug functions
-if(true) {
-    @ini_set('display_errors', 1);
-    @ini_set('display_startup_errors', 1);
-    @error_reporting(E_ALL);
-}
-
-function dd($data) {
-    echo '<pre>';
-    print_r($data);
-    echo '</pre>';
-    die();
+// Debug functions (solo en desarrollo)
+if (defined('WP_DEBUG') && WP_DEBUG) {
+    function dd($data) {
+        echo '<pre>';
+        print_r($data);
+        echo '</pre>';
+        die();
+    }
 }
 
