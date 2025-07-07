@@ -47,7 +47,6 @@ jQuery(document).ready(function($) {
                 if (response.success) {
                     var action = $this.data('action');
                     
-                    // Manejar categorías de forma directa (no por lotes)
                     if (action === 'sm_get_categories') {
                         var created = response.data.created || 0;
                         var updated = response.data.updated || 0;
@@ -56,13 +55,11 @@ jQuery(document).ready(function($) {
                         $this.find('.sm_sync_result').html('<span style="color: green;">' + message + '</span>');
                         console.log('Categorías procesadas:', response.data);
                     } 
-                    // Manejar entidades y productos por lotes
                     else {
                         $this.find('.sm_sync_progress').css('display', 'inline-block');
                         $this.find('.sm_sync_progress_bar_text').html('0/' + response.data.total);
                         
                         if (response.data.total > 0) {
-                            // Resetear el reporte de estado
                             $this.find('.sm_sync_status_report').html('[0 creados / 0 actualizados]');
                             processBatchUsers($this, 0, response.data.total, 10);
                         } else {
@@ -134,7 +131,6 @@ jQuery(document).ready(function($) {
                 $this.find('.sm_sync_progress').css('display', 'inline-block');
                 $this.find('.sm_sync_progress_bar_text').html('0/' + response.data.total);
                 
-                // Iniciar procesamiento por lotes
                 if (response.success && response.data.total > 0) {
                     // Resetear el reporte de estado
                     $this.find('.sm_sync_status_report').html('[0 creados / 0 actualizados]');

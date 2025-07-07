@@ -2,13 +2,11 @@
     <h1>Configuración Socomarca</h1>
     <p>Panel de administración para la sincronización con Random ERP.</p>
     
-    <!-- Navegación de tabs de WordPress -->
     <h2 class="nav-tab-wrapper">
         <a href="#tab-sync" class="nav-tab nav-tab-active" id="tab-sync-link">Sincronización</a>
         <a href="#tab-config" class="nav-tab" id="tab-config-link">Configuración</a>
     </h2>
     
-    <!-- Tab 1: Sincronización -->
     <div id="tab-sync" class="tab-content active">
         <h2>Sincronizar usuarios con Random ERP</h2>
         <table class="form-table">
@@ -119,7 +117,6 @@
         </table>
     </div>
     
-    <!-- Tab 2: Configuración -->
     <div id="tab-config" class="tab-content" style="display: none;">
         <h3>Configuración Random ERP</h3>
         <form method="post" action="#">

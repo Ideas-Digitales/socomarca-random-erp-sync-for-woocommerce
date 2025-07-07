@@ -13,22 +13,18 @@
   Author: Javier Aguero
  */
 
-// Evita el acceso directo a este archivo
 if (!defined('ABSPATH')) {
     exit; 
 }
 
-// Test inmediato
 error_log('=== SOCOMARCA ERP: Plugin cargándose ===');
 file_put_contents('/tmp/socomarca-debug.log', "Plugin cargándose: " . date('Y-m-d H:i:s') . "\n", FILE_APPEND);
 
-// Definir constantes del plugin
 define('SOCOMARCA_ERP_PLUGIN_FILE', __FILE__);
 define('SOCOMARCA_ERP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SOCOMARCA_ERP_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('SOCOMARCA_ERP_VERSION', '1.0.0');
 
-// Verificar WooCommerce pero sin return
 if (!class_exists('WooCommerce')) {
     error_log('Socomarca ERP: WooCommerce no encontrado');
     add_action('admin_notices', function() {
@@ -38,7 +34,6 @@ if (!class_exists('WooCommerce')) {
     error_log('Socomarca ERP: WooCommerce encontrado');
 }
 
-// Cargar Composer autoloader si existe (opcional ahora)
 if (file_exists(SOCOMARCA_ERP_PLUGIN_DIR . 'vendor/autoload.php')) {
     require_once SOCOMARCA_ERP_PLUGIN_DIR . 'vendor/autoload.php';
     error_log('Socomarca ERP: Composer autoloader cargado');
@@ -46,19 +41,15 @@ if (file_exists(SOCOMARCA_ERP_PLUGIN_DIR . 'vendor/autoload.php')) {
     error_log('Socomarca ERP: Composer autoloader no encontrado (usando WordPress HTTP API)');
 }
 
-// Cargar autoloader del plugin
 require_once SOCOMARCA_ERP_PLUGIN_DIR . 'src/Autoloader.php';
 Socomarca\RandomERP\Autoloader::getInstance()->register();
 error_log('Socomarca ERP: Autoloader del plugin cargado y registrado');
 
-// Inicializar el plugin
 use Socomarca\RandomERP\Plugin;
 
-// Inicializar plugin principal en lugar de función simple
 add_action('plugins_loaded', function() {
     error_log('Socomarca ERP: Hook plugins_loaded ejecutándose');
     
-    // Verificar versión de PHP sin return
     if (version_compare(PHP_VERSION, '8.0', '<')) {
         error_log('Socomarca ERP: Error - PHP version < 8.0');
         add_action('admin_notices', function() {
@@ -66,8 +57,7 @@ add_action('plugins_loaded', function() {
         });
     } else {
         try {
-            // Inicializar el plugin
-            error_log('Socomarca ERP: Creando instancia del plugin');
+                        error_log('Socomarca ERP: Creando instancia del plugin');
             Plugin::getInstance();
             error_log('Socomarca ERP: Plugin instanciado exitosamente');
         } catch (Exception $e) {
@@ -80,7 +70,6 @@ add_action('plugins_loaded', function() {
 });
 
 
-// Debug functions (solo en desarrollo)
 if (defined('WP_DEBUG') && WP_DEBUG) {
     function dd($data) {
         echo '<pre>';

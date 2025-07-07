@@ -7,7 +7,6 @@ class CategoryService extends BaseApiService {
     public function getCategories() {
         error_log('CategoryService: Obteniendo categorías...');
         
-        // Las categorías no necesitan filtrar por empresa/rut
         $endpoint = "/familias";
         $categories = $this->makeApiRequest($endpoint);
         
@@ -46,7 +45,6 @@ class CategoryService extends BaseApiService {
         $updated_categories = 0;
         $errors = [];
         
-        // Procesar categorías por niveles para asegurar que los padres existan antes que los hijos
         for ($nivel = 1; $nivel <= 3; $nivel++) {
             error_log("CategoryService: Iniciando procesamiento nivel $nivel");
             $level_count = 0;
@@ -56,7 +54,7 @@ class CategoryService extends BaseApiService {
                     $categoria_nivel = isset($category['NIVEL']) ? intval($category['NIVEL']) : 0;
                     
                     if ($categoria_nivel != $nivel) {
-                        continue; // Saltar si no es el nivel actual
+                        continue;
                     }
                     
                     $level_count++;
@@ -91,7 +89,6 @@ class CategoryService extends BaseApiService {
             error_log("CategoryService: Nivel $nivel completado. Procesadas: $level_count categorías");
         }
         
-        // Verificar cuántas categorías hay en WooCommerce
         $wc_categories = get_terms([
             'taxonomy' => 'product_cat',
             'hide_empty' => false,
@@ -124,11 +121,9 @@ class CategoryService extends BaseApiService {
             'description' => ''
         ];
         
-        // Buscar si ya existe
         $existing_term = get_term_by('slug', $term_data['slug'], 'product_cat');
         
         if ($existing_term) {
-            // Actualizar categoría existente
             $result = wp_update_term($existing_term->term_id, 'product_cat', $term_data);
             if (!is_wp_error($result)) {
                 $this->saveTermMeta($existing_term->term_id, $category);
@@ -138,7 +133,6 @@ class CategoryService extends BaseApiService {
                 return ['success' => false, 'error' => 'Error actualizando categoría ' . $category['CODIGO'] . ': ' . $result->get_error_message()];
             }
         } else {
-            // Crear nueva categoría
             $result = wp_insert_term($term_data['name'], 'product_cat', $term_data);
             if (!is_wp_error($result)) {
                 $this->saveTermMeta($result['term_id'], $category);
@@ -153,17 +147,17 @@ class CategoryService extends BaseApiService {
     private function processSubCategory($category, $nivel) {
         $parent_key_parts = explode("/", $category['LLAVE']);
         
-        // Para nivel 2: buscar por el primer segmento
-        // Para nivel 3: buscar por los primeros dos segmentos
+        
+        
         if ($nivel == 2) {
             $parent_code = $parent_key_parts[0];
-        } else { // nivel 3
+        } else { 
             $parent_code = isset($parent_key_parts[1]) ? $parent_key_parts[1] : $parent_key_parts[0];
         }
         
         error_log("CategoryService: Buscando padre '$parent_code' para {$category['CODIGO']}");
         
-        // Buscar la categoría padre
+        
         $parent_term = get_terms([
             'taxonomy' => 'product_cat',
             'meta_query' => [
@@ -190,11 +184,10 @@ class CategoryService extends BaseApiService {
             'description' => ''
         ];
         
-        // Buscar si ya existe
         $existing_term = get_term_by('slug', $term_data['slug'], 'product_cat');
         
         if ($existing_term) {
-            // Actualizar subcategoría existente
+            
             $result = wp_update_term($existing_term->term_id, 'product_cat', $term_data);
             if (!is_wp_error($result)) {
                 $this->saveTermMeta($existing_term->term_id, $category);
@@ -204,7 +197,7 @@ class CategoryService extends BaseApiService {
                 return ['success' => false, 'error' => 'Error actualizando subcategoría ' . $category['CODIGO'] . ': ' . $result->get_error_message()];
             }
         } else {
-            // Crear nueva subcategoría
+            
             $result = wp_insert_term($term_data['name'], 'product_cat', $term_data);
             if (!is_wp_error($result)) {
                 $this->saveTermMeta($result['term_id'], $category);
@@ -226,7 +219,7 @@ class CategoryService extends BaseApiService {
         error_log('CategoryService: Iniciando eliminación masiva de categorías');
         
         try {
-            // Obtener todas las categorías de productos
+            
             $categories = get_terms([
                 'taxonomy' => 'product_cat',
                 'hide_empty' => false,

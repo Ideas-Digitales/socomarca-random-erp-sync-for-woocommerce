@@ -32,7 +32,7 @@ class ProductService extends BaseApiService {
             ];
         }
         
-        // Guardar los productos en cache para procesamiento por lotes
+        
         update_option('sm_products_cache', $products['items']);
         
         error_log('ProductService: Éxito - ' . $products['quantity'] . ' productos guardados en cache');
@@ -59,7 +59,7 @@ class ProductService extends BaseApiService {
         $updated_products = 0;
         $errors = [];
         
-        // Obtener contadores acumulativos
+        
         $total_created = intval(get_option('sm_total_created_products', 0));
         $total_updated = intval(get_option('sm_total_updated_products', 0));
         
@@ -89,13 +89,13 @@ class ProductService extends BaseApiService {
         $total = count($cached_products);
         $is_complete = $processed >= $total;
         
-        // Actualizar contadores acumulativos
+        
         $total_created += $created_products;
         $total_updated += $updated_products;
         update_option('sm_total_created_products', $total_created);
         update_option('sm_total_updated_products', $total_updated);
         
-        // Limpiar cache y contadores si terminamos
+        
         if ($is_complete) {
             delete_option('sm_products_cache');
             delete_option('sm_total_created_products');
@@ -119,10 +119,10 @@ class ProductService extends BaseApiService {
     }
     
     private function processProduct($product) {
-        // Buscar categorías asociadas
+        
         $category_ids = $this->findProductCategories($product);
         
-        // Buscar producto existente por SKU
+        
         $existing_product_id = wc_get_product_id_by_sku($product['KOPR']);
         
         if ($existing_product_id) {
@@ -136,7 +136,7 @@ class ProductService extends BaseApiService {
         $category_ids = [];
         
         if (!empty($product['FMPR'])) {
-            // Buscar categoría principal
+            
             $main_category = get_terms([
                 'taxonomy' => 'product_cat',
                 'meta_query' => [
@@ -159,7 +159,7 @@ class ProductService extends BaseApiService {
         }
         
         if (!empty($product['PFPR'])) {
-            // Buscar subcategoría
+            
             $subcategory = get_terms([
                 'taxonomy' => 'product_cat',
                 'meta_query' => [
@@ -194,7 +194,7 @@ class ProductService extends BaseApiService {
         $wc_product->set_sku($product['KOPR']);
         $wc_product->set_status('publish');
         $wc_product->set_catalog_visibility('visible');
-        $wc_product->set_regular_price(10000); // Precio estático por ahora
+        $wc_product->set_regular_price(10000); 
         
         if (!empty($category_ids)) {
             $wc_product->set_category_ids($category_ids);
@@ -202,7 +202,7 @@ class ProductService extends BaseApiService {
         
         $wc_product->save();
         
-        // Guardar metadatos del ERP
+        
         $this->saveProductMeta($product_id, $product);
         
         error_log("ProductService: Producto actualizado - {$product['KOPR']}");
@@ -215,7 +215,7 @@ class ProductService extends BaseApiService {
         $new_product->set_sku($product['KOPR']);
         $new_product->set_status('publish');
         $new_product->set_catalog_visibility('visible');
-        $new_product->set_regular_price(10000); // Precio estático por ahora
+        $new_product->set_regular_price(10000); 
         $new_product->set_manage_stock(false);
         
         if (!empty($category_ids)) {
@@ -228,7 +228,7 @@ class ProductService extends BaseApiService {
             return ['success' => false, 'error' => "Error creando producto: {$product['KOPR']}"];
         }
         
-        // Guardar metadatos del ERP
+        
         $this->saveProductMeta($product_id, $product);
         
         error_log("ProductService: Producto creado - {$product['KOPR']} -> ID $product_id");
@@ -245,7 +245,7 @@ class ProductService extends BaseApiService {
         error_log('ProductService: Iniciando eliminación masiva de productos');
         
         try {
-            // Obtener todos los productos
+            
             $products = wc_get_products([
                 'status' => ['publish', 'private', 'draft', 'pending', 'trash'],
                 'limit' => -1,
@@ -266,7 +266,7 @@ class ProductService extends BaseApiService {
             
             foreach ($products as $product_id) {
                 try {
-                    // Forzar eliminación permanente
+                    
                     $result = wp_delete_post($product_id, true);
                     
                     if ($result) {
@@ -280,7 +280,7 @@ class ProductService extends BaseApiService {
                 }
             }
             
-            // Limpiar metadatos y relaciones huérfanas
+            
             $this->cleanupOrphanedData();
             
             $message = "Se eliminaron $deleted_count productos exitosamente.";
@@ -314,10 +314,10 @@ class ProductService extends BaseApiService {
         try {
             global $wpdb;
             
-            // Limpiar metadatos de productos huérfanos
+            
             $wpdb->query("DELETE pm FROM {$wpdb->postmeta} pm LEFT JOIN {$wpdb->posts} p ON p.ID = pm.post_id WHERE p.ID IS NULL");
             
-            // Limpiar relaciones de términos huérfanas
+            
             $wpdb->query("DELETE tr FROM {$wpdb->term_relationships} tr LEFT JOIN {$wpdb->posts} p ON p.ID = tr.object_id WHERE p.ID IS NULL");
             
             error_log('ProductService: Limpieza de metadatos y relaciones completada');

@@ -31,7 +31,7 @@ class AdminPages {
     }
     
     public function enqueueAssets($hook) {
-        // Solo cargar en nuestra página
+        
         if ($hook !== 'toplevel_page_socomarca') {
             return;
         }
@@ -53,7 +53,7 @@ class AdminPages {
             true
         );
         
-        // Pasar datos al JavaScript
+        
         wp_localize_script('socomarca-admin-js', 'socomarca_ajax', [
             'ajax_url' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('socomarca_nonce')
@@ -61,18 +61,18 @@ class AdminPages {
     }
     
     public function renderConfigurationPage() {
-        // Procesar envío del formulario
+        
         if (isset($_POST['submit']) && wp_verify_nonce($_POST['_wpnonce'], 'socomarca_config')) {
             $this->saveConfiguration();
         }
         
-        // Obtener valores actuales
+        
         $config = $this->getConfiguration();
         
-        // Incluir template
+        
         $template_path = SOCOMARCA_ERP_PLUGIN_DIR . 'templates/configuration.php';
         if (file_exists($template_path)) {
-            // Extraer variables para el template
+            
             extract($config);
             include $template_path;
         } else {
@@ -81,24 +81,24 @@ class AdminPages {
     }
     
     private function saveConfiguration() {
-        // Validar y sanitizar datos
+        
         $api_url = sanitize_url($_POST['sm_api_url'] ?? '');
         $api_user = sanitize_email($_POST['sm_api_user'] ?? '');
         $api_password = sanitize_text_field($_POST['sm_api_password'] ?? '');
         $company_code = sanitize_text_field($_POST['sm_company_code'] ?? '');
         $company_rut = sanitize_text_field($_POST['sm_company_rut'] ?? '');
         
-        // Guardar opciones
+        
         update_option('sm_api_url', $api_url);
         update_option('sm_api_user', $api_user);
         update_option('sm_api_password', $api_password);
         update_option('sm_company_code', $company_code);
         update_option('sm_company_rut', $company_rut);
         
-        // Invalidar token al cambiar configuración
+        
         delete_option('random_erp_token');
         
-        // Mostrar mensaje de éxito
+        
         add_action('admin_notices', function() {
             echo '<div class="notice notice-success is-dismissible"><p>Configuración guardada correctamente.</p></div>';
         });

@@ -22,7 +22,7 @@ class CategoryAjaxHandler extends BaseAjaxHandler {
     public function getCategories() {
         $this->logAction('Iniciando proceso de obtención y procesamiento de categorías');
         
-        // Obtener y procesar categorías directamente
+        
         $result = $this->categoryService->processCategories();
         
         $this->logAction('Resultado completo - ' . print_r($result, true));

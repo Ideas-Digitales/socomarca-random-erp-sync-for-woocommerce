@@ -38,7 +38,7 @@ class EntityService extends BaseApiService {
             ];
         }
         
-        // Guardar las entidades en cache para procesamiento por lotes
+        
         update_option('sm_entities_cache', $entities['items']);
         
         error_log('EntityService: Éxito - ' . $entities['quantity'] . ' entidades guardadas en cache');
@@ -65,7 +65,7 @@ class EntityService extends BaseApiService {
         $updated_users = 0;
         $errors = [];
         
-        // Obtener contadores acumulativos
+        
         $total_created = intval(get_option('sm_total_created_users', 0));
         $total_updated = intval(get_option('sm_total_updated_users', 0));
         
@@ -77,7 +77,7 @@ class EntityService extends BaseApiService {
                     continue;
                 }
                 
-                // Buscar usuario existente por RUT en meta_value
+                
                 $existing_user = get_users([
                     'meta_key' => 'rut',
                     'meta_value' => $rut,
@@ -93,7 +93,7 @@ class EntityService extends BaseApiService {
                 ];
                 
                 if (!empty($existing_user)) {
-                    // Actualizar usuario existente
+                    
                     $user_id = $existing_user[0]->ID;
                     $user_data['ID'] = $user_id;
                     $result = wp_update_user($user_data);
@@ -105,7 +105,7 @@ class EntityService extends BaseApiService {
                     
                     $updated_users++;
                 } else {
-                    // Crear nuevo usuario
+                    
                     $user_data['user_pass'] = wp_generate_password();
                     $user_id = wp_insert_user($user_data);
                     
@@ -117,7 +117,7 @@ class EntityService extends BaseApiService {
                     $created_users++;
                 }
                 
-                // Actualizar meta campos
+                
                 update_user_meta($user_id, 'rut', $rut);
                 update_user_meta($user_id, 'business_name', isset($entidad['SIEN']) ? $entidad['SIEN'] : '');
                 update_user_meta($user_id, 'phone', isset($entidad['FOEN']) ? $entidad['FOEN'] : '');
@@ -132,13 +132,13 @@ class EntityService extends BaseApiService {
         $total = count($cached_entities);
         $is_complete = $processed >= $total;
         
-        // Actualizar contadores acumulativos
+        
         $total_created += $created_users;
         $total_updated += $updated_users;
         update_option('sm_total_created_users', $total_created);
         update_option('sm_total_updated_users', $total_updated);
         
-        // Limpiar cache y contadores si terminamos
+        
         if ($is_complete) {
             delete_option('sm_entities_cache');
             delete_option('sm_total_created_users');
@@ -164,14 +164,14 @@ class EntityService extends BaseApiService {
         $errors = [];
         
         try {
-            // Obtener todos los usuarios excepto administradores
+            
             $users = get_users([
                 'role__not_in' => ['administrator', 'super_admin'],
                 'fields' => ['ID', 'user_login']
             ]);
             
             foreach ($users as $user) {
-                // Doble verificación: no borrar usuarios con capacidad de administrador
+                
                 if (!user_can($user->ID, 'manage_options')) {
                     $result = wp_delete_user($user->ID);
                     if ($result) {

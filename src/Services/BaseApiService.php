@@ -98,12 +98,10 @@ abstract class BaseApiService {
         if ($status_code === 200) {
             $body = json_decode($body_raw, true);
             
-            // Si la respuesta está envuelta en un objeto con 'data' (como categorías)
             if (isset($body['data']) && is_array($body['data'])) {
                 return $body['data'];
             }
             
-            // Si la respuesta es un array directo (como entidades)
             if (is_array($body)) {
                 return $body;
             }
@@ -112,25 +110,21 @@ abstract class BaseApiService {
             return false;
         }
         
-        // Si el token expiró (401), intentar re-autenticar
         if ($status_code === 401) {
             error_log('BaseApiService: Token expirado, re-autenticando...');
             delete_option('random_erp_token');
             $new_token = $this->authenticate();
             if ($new_token) {
-                // Reintentar la petición con el nuevo token
                 $args['headers']['Authorization'] = 'Bearer ' . $new_token;
                 $retry_response = wp_remote_request($url, $args);
                 
                 if (!is_wp_error($retry_response) && wp_remote_retrieve_response_code($retry_response) === 200) {
                     $retry_body = json_decode(wp_remote_retrieve_body($retry_response), true);
                     
-                    // Si la respuesta está envuelta en un objeto con 'data'
                     if (isset($retry_body['data']) && is_array($retry_body['data'])) {
                         return $retry_body['data'];
                     }
                     
-                    // Si la respuesta es un array directo
                     if (is_array($retry_body)) {
                         return $retry_body;
                     }

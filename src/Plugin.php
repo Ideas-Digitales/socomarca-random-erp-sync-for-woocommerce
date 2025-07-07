@@ -26,10 +26,10 @@ class Plugin {
     private function init() {
         error_log('Socomarca ERP: Plugin::init() iniciado');
         
-        // Inicializar componentes
+        
         $this->initializeComponents();
         
-        // Registrar hooks
+        
         $this->registerHooks();
         
         error_log('Socomarca ERP: Plugin::init() completado');
@@ -38,34 +38,34 @@ class Plugin {
     private function initializeComponents() {
         error_log('Socomarca ERP: Inicializando componentes...');
         
-        // Inicializar manejadores AJAX
+        
         new AuthAjaxHandler();
         new EntityAjaxHandler();
         new CategoryAjaxHandler();
         new ProductAjaxHandler();
         
-        // Inicializar páginas de administración
+        
         new AdminPages();
         
         error_log('Socomarca ERP: Componentes inicializados exitosamente');
     }
     
     private function registerHooks() {
-        // Hook de activación
+        
         register_activation_hook($this->getPluginFile(), [$this, 'activate']);
         
-        // Hook de desactivación
+        
         register_deactivation_hook($this->getPluginFile(), [$this, 'deactivate']);
         
-        // Hook de desinstalación
+        
         register_uninstall_hook($this->getPluginFile(), [__CLASS__, 'uninstall']);
         
-        // Enlace de ajustes en la página de plugins
+        
         add_filter('plugin_action_links_' . plugin_basename($this->getPluginFile()), [$this, 'addSettingsLink']);
     }
     
     public function activate() {
-        // Crear tablas o configuraciones necesarias al activar
+        
         $this->createDatabaseTables();
         $this->setDefaultOptions();
         
@@ -73,26 +73,26 @@ class Plugin {
     }
     
     public function deactivate() {
-        // Limpiar trabajos programados, etc.
+        
         $this->cleanupScheduledTasks();
         
         error_log('Socomarca Random ERP Plugin: Desactivado');
     }
     
     public static function uninstall() {
-        // Eliminar opciones y datos del plugin
+        
         self::removePluginData();
         
         error_log('Socomarca Random ERP Plugin: Desinstalado');
     }
     
     private function createDatabaseTables() {
-        // Por ahora no necesitamos tablas adicionales
-        // pero esta función está lista para futuras expansiones
+        
+        
     }
     
     private function setDefaultOptions() {
-        // Establecer valores por defecto si no existen
+        
         add_option('sm_api_url', 'http://seguimiento.random.cl:3003');
         add_option('sm_api_user', 'demo@random.cl');
         add_option('sm_api_password', 'd3m0r4nd0m3RP');
@@ -101,14 +101,14 @@ class Plugin {
     }
     
     private function cleanupScheduledTasks() {
-        // Limpiar cualquier tarea programada
+        
         wp_clear_scheduled_hook('sm_sync_entities');
         wp_clear_scheduled_hook('sm_sync_products');
         wp_clear_scheduled_hook('sm_sync_categories');
     }
     
     private static function removePluginData() {
-        // Eliminar opciones del plugin
+        
         delete_option('sm_api_url');
         delete_option('sm_api_user');
         delete_option('sm_api_password');
@@ -116,7 +116,7 @@ class Plugin {
         delete_option('sm_company_rut');
         delete_option('random_erp_token');
         
-        // Eliminar opciones de cache
+        
         delete_option('sm_entities_cache');
         delete_option('sm_products_cache');
         delete_option('sm_total_created_users');
