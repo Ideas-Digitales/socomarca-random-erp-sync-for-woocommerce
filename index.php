@@ -25,7 +25,7 @@ define('SOCOMARCA_ERP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SOCOMARCA_ERP_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('SOCOMARCA_ERP_VERSION', '1.0.0');
 
-if (!class_exists('WooCommerce')) {
+if (class_exists('WooCommerce')) {
     error_log('Socomarca ERP: WooCommerce no encontrado');
     add_action('admin_notices', function() {
         echo '<div class="error"><p>' . esc_html__('Socomarca Random ERP Sync for WooCommerce requiere WooCommerce para funcionar.', 'socomarca-random-erp-sync-for-woocommerce') . '</p></div>';
@@ -70,12 +70,12 @@ add_action('plugins_loaded', function() {
 });
 
 
-if (defined('WP_DEBUG') && WP_DEBUG) {
-    function dd($data) {
-        echo '<pre>';
-        print_r($data);
-        echo '</pre>';
-        die();
-    }
+
+function dd($data) {
+    echo '<pre>';
+    print_r($data);
+    echo '</pre>';
+    die();
 }
+
 

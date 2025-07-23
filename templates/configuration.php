@@ -65,6 +65,15 @@
                         </span>
                     </td>
                 </tr>
+                <tr>
+                    <th>
+                        Lista de Precios
+                    </th>
+                    <td class="sm_sync" data-action="sm_get_price_lists">
+                        <a class="button" href="#">Sincronizar lista de precios</a>
+                        <span class="sm_sync_result"></span>
+                    </td>
+                </tr>
                 </tbody>
             </table>
             <h2>Botones para reiniciar las pruebas</h2>
@@ -170,6 +179,14 @@
                         </th>
                         <td>
                             <input name="sm_company_rut" type="text" id="sm_company_rut" value="<?php echo esc_attr($company_rut); ?>" class="regular-text code">
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
+                            Bodega
+                        </th>
+                        <td>
+                            <input name="sm_company_warehouse" type="text" id="sm_company_warehouse" value="<?php echo esc_attr($company_warehouse); ?>" class="regular-text code">
                         </td>
                     </tr>
                 </tbody>

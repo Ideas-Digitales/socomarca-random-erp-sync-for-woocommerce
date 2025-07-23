@@ -55,6 +55,13 @@ jQuery(document).ready(function($) {
                         $this.find('.sm_sync_result').html('<span style="color: green;">' + message + '</span>');
                         console.log('Categorías procesadas:', response.data);
                     } 
+                    else if (action === 'sm_get_price_lists') {
+                        var message = response.data.message || 'Listas de precios obtenidas';
+                        var quantity = response.data.quantity || 0;
+                        
+                        $this.find('.sm_sync_result').html('<span style="color: green;">' + message + ' (' + quantity + ' registros)</span>');
+                        console.log('Listas de precios obtenidas:', response.data);
+                    } 
                     else {
                         $this.find('.sm_sync_progress').css('display', 'inline-block');
                         $this.find('.sm_sync_progress_bar_text').html('0/' + response.data.total);

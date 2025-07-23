@@ -79,3 +79,8 @@
     font-size: 13px;
     white-space: nowrap;
 }
+
+
+.b2bking_dismiss_review_notice {
+    display: none !important;
+}
