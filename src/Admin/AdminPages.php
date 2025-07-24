@@ -88,6 +88,7 @@ class AdminPages {
         $company_code = sanitize_text_field($_POST['sm_company_code'] ?? '');
         $company_rut = sanitize_text_field($_POST['sm_company_rut'] ?? '');
         $company_warehouse = sanitize_text_field($_POST['sm_company_warehouse'] ?? '');
+        $product_type = sanitize_text_field($_POST['sm_product_type'] ?? 'auto');
         
         
         update_option('sm_api_url', $api_url);
@@ -96,6 +97,7 @@ class AdminPages {
         update_option('sm_company_code', $company_code);
         update_option('sm_company_rut', $company_rut);
         update_option('sm_company_warehouse', $company_warehouse);
+        update_option('sm_product_type', $product_type);
         
         
         delete_option('random_erp_token');
@@ -113,7 +115,8 @@ class AdminPages {
             'api_password' => get_option('sm_api_password', ''),
             'company_code' => get_option('sm_company_code', ''),
             'company_rut' => get_option('sm_company_rut', ''),
-            'company_warehouse' => get_option('sm_company_warehouse', '')
+            'company_warehouse' => get_option('sm_company_warehouse', ''),
+            'product_type' => get_option('sm_product_type', 'auto')
         ];
     }
 }

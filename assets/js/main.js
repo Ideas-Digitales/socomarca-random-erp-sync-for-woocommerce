@@ -421,6 +421,176 @@ jQuery(document).ready(function($) {
         });
     });
     
+    // Manejar botón de eliminación masiva total
+    $('#sm_delete_all_data').click(function(e) {
+        e.preventDefault();
+        
+        // Confirmación triple para máxima seguridad
+        var confirmation1 = confirm('🚨 MÁXIMO PELIGRO: ¿Estás seguro de que quieres ELIMINAR TODO?\n\n• TODOS los productos de WooCommerce\n• TODAS las categorías\n• TODOS los usuarios (excepto administradores)\n\nEsta acción NO SE PUEDE DESHACER.');
+        
+        if (!confirmation1) {
+            return;
+        }
+        
+        var confirmation2 = confirm('⚠️ ÚLTIMA ADVERTENCIA: Esta acción eliminará permanentemente:\n\n✗ Productos\n✗ Categorías\n✗ Usuarios\n\n¿Estás COMPLETAMENTE SEGURO?');
+        
+        if (!confirmation2) {
+            return;
+        }
+        
+        var confirmText = prompt('Para confirmar, escribe exactamente: DELETE_ALL_DATA');
+        if (confirmText !== 'DELETE_ALL_DATA') {
+            alert('Texto de confirmación incorrecto. Operación cancelada.');
+            return;
+        }
+        
+        var $button = $(this);
+        var $result = $('#sm_delete_all_data_result');
+        var $progress = $('.sm_delete_all_data_progress');
+        var $progressBar = $progress.find('.sm_sync_progress_bar_fill');
+        var $progressText = $progress.find('.sm_sync_progress_bar_text');
+        var $statusReport = $progress.find('.sm_delete_status_report');
+        
+        $.ajax({
+            url: socomarca_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'sm_delete_all_data',
+                confirm: 'DELETE_ALL_DATA'
+            },
+            beforeSend: function() {
+                $button.addClass('disabled').text('🔄 Inicializando...');
+                $result.html('<div class="loader"></div><span style="margin-left: 10px; color: orange;">Preparando eliminación masiva...</span>');
+                $progress.hide();
+            },
+            success: function(response) {
+                console.log('Respuesta inicialización eliminación masiva:', response);
+                
+                if (response.success) {
+                    // Initialize progress bar
+                    var totalItems = response.data.total_items;
+                    var productsTotal = response.data.products_total;
+                    var categoriesTotal = response.data.categories_total;
+                    var usersTotal = response.data.users_total;
+                    
+                    $result.html('<span style="color: blue;">📊 ' + response.data.message + '</span>');
+                    $progress.show();
+                    $progressText.text('0/' + totalItems);
+                    $progressBar.css('width', '0%');
+                    $statusReport.text(`[Productos: 0/${productsTotal} | Categorías: 0/${categoriesTotal} | Usuarios: 0/${usersTotal}]`);
+                    
+                    // Start batch processing
+                    deleteBatchData(totalItems, productsTotal, categoriesTotal, usersTotal, 0, 0, 0);
+                } else {
+                    $button.removeClass('disabled').text('🗑️ ELIMINAR TODO (Productos + Categorías + Usuarios)');
+                    $result.html('<span style="color: red;">❌ Error: ' + response.data.message + '</span>');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error AJAX inicialización eliminación masiva:', xhr, status, error);
+                $button.removeClass('disabled').text('🗑️ ELIMINAR TODO (Productos + Categorías + Usuarios)');
+                $result.html('<span style="color: red;">❌ Error en la petición: ' + error + '</span>');
+            }
+        });
+    });
+    
+    function deleteBatchData(totalItems, productsTotal, categoriesTotal, usersTotal, productsDeleted, categoriesDeleted, usersDeleted) {
+        var $button = $('#sm_delete_all_data');
+        var $result = $('#sm_delete_all_data_result');
+        var $progress = $('.sm_delete_all_data_progress');
+        var $progressBar = $progress.find('.sm_sync_progress_bar_fill');
+        var $progressText = $progress.find('.sm_sync_progress_bar_text');
+        var $statusReport = $progress.find('.sm_delete_status_report');
+        
+        var totalDeleted = productsDeleted + categoriesDeleted + usersDeleted;
+        
+        $.ajax({
+            url: socomarca_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'sm_delete_batch_data'
+            },
+            success: function(response) {
+                console.log('Respuesta lote eliminación:', response);
+                
+                if (response.success) {
+                    var data = response.data;
+                    var newTotalDeleted = data.total_deleted;
+                    var phaseComplete = data.phase_complete;
+                    var allComplete = data.all_complete;
+                    
+                    // Update progress bar
+                    var progressPercent = (newTotalDeleted / totalItems) * 100;
+                    $progressBar.css('width', progressPercent + '%');
+                    $progressText.text(newTotalDeleted + '/' + totalItems);
+                    
+                    // Update status based on phase
+                    var currentProductsDeleted = productsDeleted;
+                    var currentCategoriesDeleted = categoriesDeleted;
+                    var currentUsersDeleted = usersDeleted;
+                    
+                    if (data.phase === 'products') {
+                        currentProductsDeleted = Math.min(productsTotal, productsDeleted + data.deleted_this_batch);
+                    } else if (data.phase === 'categories') {
+                        currentProductsDeleted = productsTotal; // Products phase already complete
+                        currentCategoriesDeleted = Math.min(categoriesTotal, categoriesDeleted + data.deleted_this_batch);
+                    } else if (data.phase === 'users') {
+                        currentProductsDeleted = productsTotal; // Products phase complete
+                        currentCategoriesDeleted = categoriesTotal; // Categories phase complete
+                        currentUsersDeleted = Math.min(usersTotal, usersDeleted + data.deleted_this_batch);
+                    }
+                    
+                    $statusReport.text(`[Productos: ${currentProductsDeleted}/${productsTotal} | Categorías: ${currentCategoriesDeleted}/${categoriesTotal} | Usuarios: ${currentUsersDeleted}/${usersTotal}]`);
+                    
+                    // Update status message
+                    var phaseText = data.phase === 'products' ? 'productos' : 
+                                   data.phase === 'categories' ? 'categorías' : 'usuarios';
+                    $result.html('<span style="color: orange;">🔄 Eliminando ' + phaseText + '... ' + data.message + '</span>');
+                    
+                    if (allComplete) {
+                        // Process complete
+                        $button.removeClass('disabled').text('🗑️ ELIMINAR TODO (Productos + Categorías + Usuarios)');
+                        
+                        if (data.final_summary) {
+                            var summary = data.final_summary;
+                            var finalMsg = '✅ ' + data.message + 
+                                         '<br><small style="color: #666;">Detalles: ' + 
+                                         summary.products_deleted + ' productos, ' + 
+                                         summary.categories_deleted + ' categorías, ' + 
+                                         summary.users_deleted + ' usuarios eliminados</small>';
+                            $result.html('<span style="color: green;">' + finalMsg + '</span>');
+                        }
+                        
+                        if (data.errors && data.errors.length > 0) {
+                            $result.append('<br><span style="color: orange;">⚠️ Errores: ' + data.errors.join(' | ') + '</span>');
+                        }
+                        
+                        // Hide progress bar after completion
+                        setTimeout(function() {
+                            $progress.fadeOut();
+                        }, 3000);
+                    } else {
+                        // Continue with next batch after short delay
+                        setTimeout(function() {
+                            deleteBatchData(totalItems, productsTotal, categoriesTotal, usersTotal, 
+                                          currentProductsDeleted, currentCategoriesDeleted, currentUsersDeleted);
+                        }, 500);
+                    }
+                } else {
+                    $button.removeClass('disabled').text('🗑️ ELIMINAR TODO (Productos + Categorías + Usuarios)');
+                    $result.html('<span style="color: red;">❌ Error en lote: ' + response.data.message + '</span>');
+                    $progress.hide();
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error AJAX lote eliminación:', xhr, status, error);
+                $button.removeClass('disabled').text('🗑️ ELIMINAR TODO (Productos + Categorías + Usuarios)');
+                $result.html('<span style="color: red;">❌ Error en la petición: ' + error + '</span>');
+                $progress.hide();
+            }
+        });
+    }
+    
     // Manejar tabs de WordPress
     $('.nav-tab-wrapper .nav-tab').click(function(e) {
         e.preventDefault();

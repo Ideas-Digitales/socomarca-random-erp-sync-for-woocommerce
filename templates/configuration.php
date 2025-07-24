@@ -82,6 +82,29 @@
                 <tbody>
                 <tr>
                     <th>
+                        Eliminación Masiva Total
+                    </th>
+                    <td>
+                        <a class="button button-secondary" href="#" id="sm_delete_all_data" style="background-color: #dc3545; border-color: #dc3545; color: white; font-weight: bold;">
+                            🗑️ ELIMINAR TODO (Productos + Categorías + Usuarios)
+                        </a>
+                        <span id="sm_delete_all_data_result"></span>
+                        <span class="sm_delete_all_data_progress" style="display: none;">
+                            <div class="sm_sync_progress_bar">
+                                <span class="sm_sync_progress_bar_text">0/0</span>
+                                <div class="sm_sync_progress_bar_fill"></div>
+                            </div>
+                            <span class="sm_delete_status_report" style="margin-left: 10px; font-weight: bold; color: #0073aa;">
+                                [Productos: 0 | Categorías: 0 | Usuarios: 0]
+                            </span>
+                        </span>
+                        <p class="description" style="color: #d63384;">
+                            <strong>⚠️ MÁXIMO PELIGRO:</strong> Esta acción eliminará PERMANENTEMENTE todos los productos, categorías y usuarios (excepto administradores) de una sola vez. No se puede deshacer.
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <th>
                         Gestión de Usuarios
                     </th>
                     <td>
@@ -187,6 +210,36 @@
                         </th>
                         <td>
                             <input name="sm_company_warehouse" type="text" id="sm_company_warehouse" value="<?php echo esc_attr($company_warehouse); ?>" class="regular-text code">
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
+                            Tipo de productos
+                        </th>
+                        <td>
+                            <fieldset disabled style="opacity: 0.5;">
+                                <label>
+                                    <input type="radio" name="sm_product_type" value="auto" <?php checked($product_type, 'auto'); ?> disabled />
+                                    Automático - Detectar variaciones según nombre del producto
+                                </label><br>
+                                <label>
+                                    <input type="radio" name="sm_product_type" value="variable" <?php checked($product_type, 'variable'); ?> disabled />
+                                    Productos variables - Crear siempre con variación "Unidad"
+                                </label><br>
+                                <label>
+                                    <input type="radio" name="sm_product_type" value="simple" <?php checked($product_type, 'simple'); ?> disabled />
+                                    Productos simples - Crear siempre sin variaciones
+                                </label>
+                            </fieldset>
+                            <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 10px; margin: 10px 0;">
+                                <strong>⚠️ CONFIGURACIÓN FORZADA:</strong> Todos los productos se crean como <strong>productos variables</strong> con variación "Unidad" = "UN"
+                            </div>
+                            <p class="description" style="opacity: 0.6;">
+                                <em>Configuración anterior (deshabilitada):</em><br>
+                                • <strong>Automático:</strong> Analiza el nombre del producto para detectar tallas (S, M, L, XL) y crear variaciones automáticamente<br>
+                                • <strong>Variables:</strong> Crea todos los productos con una variación por defecto llamada "Unidad" con valor "UN"<br>
+                                • <strong>Simples:</strong> Crea todos los productos como productos simples sin variaciones
+                            </p>
                         </td>
                     </tr>
                 </tbody>

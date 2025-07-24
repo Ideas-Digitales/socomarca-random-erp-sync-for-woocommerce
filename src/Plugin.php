@@ -7,6 +7,7 @@ use Socomarca\RandomERP\Ajax\EntityAjaxHandler;
 use Socomarca\RandomERP\Ajax\CategoryAjaxHandler;
 use Socomarca\RandomERP\Ajax\ProductAjaxHandler;
 use Socomarca\RandomERP\Ajax\PriceListAjaxHandler;
+use Socomarca\RandomERP\Ajax\CombinedAjaxHandler;
 use Socomarca\RandomERP\Admin\AdminPages;
 
 class Plugin {
@@ -45,6 +46,7 @@ class Plugin {
         new CategoryAjaxHandler();
         new ProductAjaxHandler();
         new PriceListAjaxHandler();
+        new CombinedAjaxHandler();
         
         
         new AdminPages();
