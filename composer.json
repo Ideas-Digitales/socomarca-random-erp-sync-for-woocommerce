@@ -1,0 +1,14 @@
+{
+    "name": "javieraguerocl/socomarca-random-erp-sync-for-woocommerce",
+    "description": "Plugin avanzado que permite sincronizar usuarios de WordPress/WooCommerce con Random ERP para Socomarca. Incluye un sistema completo de gestión de usuarios con procesamiento por lotes, interfaz de tabs moderna y herramientas de administración seguras.",
+    "type": "wordpress-plugin",
+    "authors": [
+        {
+            "name": "javieraguerocl"
+        }
+    ],
+    "require-dev": {
+        "phpunit/phpunit": "^8.5",
+        "yoast/phpunit-polyfills": "^1.1"
+    }
+}
