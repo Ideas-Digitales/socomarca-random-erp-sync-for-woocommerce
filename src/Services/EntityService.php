@@ -97,6 +97,8 @@ class EntityService extends BaseApiService {
                     $user_id = $existing_user[0]->ID;
                     $user_data['ID'] = $user_id;
                     $result = wp_update_user($user_data);
+
+                    $this->assing_user_to_b2bking_group($user_id, $entidad['KOLTVEN']);
                     
                     if (is_wp_error($result)) {
                         $errors[] = 'Error actualizando usuario ' . $rut . ': ' . $result->get_error_message();
@@ -108,6 +110,8 @@ class EntityService extends BaseApiService {
                     
                     $user_data['user_pass'] = wp_generate_password();
                     $user_id = wp_insert_user($user_data);
+
+                    $this->assing_user_to_b2bking_group($user_id, $entidad['KOLTVEN']);
                     
                     if (is_wp_error($user_id)) {
                         $errors[] = 'Error creando usuario ' . $rut . ': ' . $user_id->get_error_message();
@@ -197,6 +201,28 @@ class EntityService extends BaseApiService {
                 'success' => false,
                 'message' => 'Error eliminando usuarios: ' . $e->getMessage()
             ];
+        }
+    }
+
+    public function assing_user_to_b2bking_group($user_id, $groups) {
+
+        $groups_ids = [];
+        foreach ($groups as $group) {
+            $group = get_page_by_title($group, OBJECT, 'b2bking_group');
+            if (!$group) {
+                return false;
+            }
+            $groups_ids[] = $group->ID;
+        }
+
+
+        //B2B King Solo soporta un grupo por usuario, si se agrega otro grupo se reemplaza el anterior
+        foreach ($groups_ids as $group_id) {
+            $user_group = get_user_meta($user_id, 'b2bking_customergroup', $group_id);
+            if(!$user_group) {
+                update_user_meta($user_id, 'b2bking_b2buser', 'yes');
+                update_user_meta($user_id, 'b2bking_customergroup', $group_id);
+            }
         }
     }
 }
