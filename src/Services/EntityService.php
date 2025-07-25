@@ -117,12 +117,12 @@ class EntityService extends BaseApiService {
                     $this->update_woocommerce_data($user_id, $entidad, $user_data);
 
                     //Enviar correo para que el usuario cambie su contraseña
-                    if($batch_count == 0) {  //Esto es temporal, para no saturar mi cuenta de mailtrap, asi solo envua un solo email por request
+                    if($batch_count == 10) {  //Esto es temporal, para no saturar mi cuenta de mailtrap, asi solo envua un solo email por request
                         $this->send_password_change_email($user_id);
                     }
                     if (is_wp_error($user_id)) {
                         $errors[] = 'Error creando usuario ' . $rut . ': ' . $user_id->get_error_message();
-                        continue;
+                    http://localhost:8081/wp-admin/admin.php?page=socomarca#    continue;
                     }
                     
                     $created_users++;
@@ -271,6 +271,7 @@ class EntityService extends BaseApiService {
 
     public function send_password_change_email($user_id) {
         $user = get_user_by('ID', $user_id);
+
         
         if (!$user) {
             error_log("EntityService: Usuario no encontrado para ID: $user_id");
