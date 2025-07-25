@@ -22,24 +22,6 @@
                 </tr>
                 <tr>
                     <th>
-                        Entidades
-                    </th>
-                    <td class="sm_sync" data-action="sm_get_entities">
-                        <a class="button" href="#">Obtener entidades</a>
-                        <span class="sm_sync_result"></span>
-                        <span class="sm_sync_progress">
-                            <div class="sm_sync_progress_bar">
-                                <span class="sm_sync_progress_bar_text">100/700</span>
-                                <div class="sm_sync_progress_bar_fill"></div>
-                            </div>
-                            <span class="sm_sync_status_report" style="margin-left: 10px; font-weight: bold; color: #0073aa;">
-                                [0 creados / 0 actualizados]
-                            </span>
-                        </span>
-                    </td>
-                </tr>
-                <tr>
-                    <th>
                         Categorías
                     </th>
                     <td class="sm_sync" data-action="sm_get_categories">
@@ -72,6 +54,24 @@
                     <td class="sm_sync" data-action="sm_get_price_lists">
                         <a class="button" href="#">Sincronizar lista de precios</a>
                         <span class="sm_sync_result"></span>
+                    </td>
+                </tr>
+                <tr>
+                    <th>
+                        Entidades
+                    </th>
+                    <td class="sm_sync" data-action="sm_get_entities">
+                        <a class="button" href="#">Obtener entidades</a>
+                        <span class="sm_sync_result"></span>
+                        <span class="sm_sync_progress">
+                            <div class="sm_sync_progress_bar">
+                                <span class="sm_sync_progress_bar_text">100/700</span>
+                                <div class="sm_sync_progress_bar_fill"></div>
+                            </div>
+                            <span class="sm_sync_status_report" style="margin-left: 10px; font-weight: bold; color: #0073aa;">
+                                [0 creados / 0 actualizados]
+                            </span>
+                        </span>
                     </td>
                 </tr>
                 </tbody>

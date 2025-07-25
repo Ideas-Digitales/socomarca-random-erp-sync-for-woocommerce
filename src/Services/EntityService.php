@@ -61,6 +61,7 @@ class EntityService extends BaseApiService {
         }
         
         $batch = array_slice($cached_entities, $offset, $batch_size);
+        $batch_count = count($batch);
         $created_users = 0;
         $updated_users = 0;
         $errors = [];
@@ -99,6 +100,7 @@ class EntityService extends BaseApiService {
                     $result = wp_update_user($user_data);
 
                     $this->assing_user_to_b2bking_group($user_id, $entidad['KOLTVEN']);
+                    $this->update_woocommerce_data($user_id, $entidad, $user_data);
                     
                     if (is_wp_error($result)) {
                         $errors[] = 'Error actualizando usuario ' . $rut . ': ' . $result->get_error_message();
@@ -112,7 +114,12 @@ class EntityService extends BaseApiService {
                     $user_id = wp_insert_user($user_data);
 
                     $this->assing_user_to_b2bking_group($user_id, $entidad['KOLTVEN']);
-                    
+                    $this->update_woocommerce_data($user_id, $entidad, $user_data);
+
+                    //Enviar correo para que el usuario cambie su contraseña
+                    if($batch_count == 0) {  //Esto es temporal, para no saturar mi cuenta de mailtrap, asi solo envua un solo email por request
+                        $this->send_password_change_email($user_id);
+                    }
                     if (is_wp_error($user_id)) {
                         $errors[] = 'Error creando usuario ' . $rut . ': ' . $user_id->get_error_message();
                         continue;
@@ -130,6 +137,7 @@ class EntityService extends BaseApiService {
             } catch (Exception $e) {
                 $errors[] = 'Error procesando entidad: ' . $e->getMessage();
             }
+            $batch_count++;
         }
         
         $processed = $offset + count($batch);
@@ -224,5 +232,59 @@ class EntityService extends BaseApiService {
                 update_user_meta($user_id, 'b2bking_customergroup', $group_id);
             }
         }
+    }
+
+    public function update_woocommerce_data($user_id, $erp_data, $user_data) {
+
+        $billing_data = [
+            'first_name'   => $user_data['first_name'],
+            'last_name'    => $user_data['last_name'],
+            'address_1'    => $erp_data['DIEN'],
+            'city'         => $erp_data['NOKOCM'],
+            'postcode'     => 4950000,
+            'country'      => $erp_data['PAEN'],
+            'state'        => $erp_data['NOKOCI'],
+            'email'        => $user_data['user_email'],
+            'phone'        => $erp_data['FOEN'],
+        ];
+        
+        $shipping_data = [
+            'first_name'   => $user_data['first_name'],
+            'last_name'    => $user_data['last_name'],
+            'address_1'    => $erp_data['DIEN'],
+            'city'         => $erp_data['NOKOCM'],
+            'postcode'     => 4950000,
+            'country'      => $erp_data['PAEN'],
+            'state'        => $erp_data['NOKOCI'],
+        ];
+
+        // Actualizar facturación
+        foreach ( $billing_data as $key => $value ) {
+            update_user_meta( $user_id, 'billing_' . $key, $value );
+        }
+
+        // Actualizar envío
+        foreach ( $shipping_data as $key => $value ) {
+            update_user_meta( $user_id, 'shipping_' . $key, $value );
+        }
+    }
+
+    public function send_password_change_email($user_id) {
+        $user = get_user_by('ID', $user_id);
+        
+        if (!$user) {
+            error_log("EntityService: Usuario no encontrado para ID: $user_id");
+            return false;
+        }
+        
+        // Usar la función nativa de WordPress para enviar el enlace de reseteo
+        $result = retrieve_password($user->user_login);
+        
+        if (is_wp_error($result)) {
+            error_log("EntityService: Error enviando email de reseteo para usuario {$user->user_login}: " . $result->get_error_message());
+            return false;
+        }
+        
+        return true;
     }
 }
