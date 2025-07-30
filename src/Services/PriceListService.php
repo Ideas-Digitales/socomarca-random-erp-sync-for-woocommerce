@@ -5,21 +5,17 @@ namespace Socomarca\RandomERP\Services;
 class PriceListService extends BaseApiService {
     
     public function getPriceLists() {
-        error_log('PriceListService: Obteniendo listas de precios...');
         
         $company_code = get_option('sm_company_code', '01');
         $endpoint = "/web32/precios/pidelistaprecio?empresa={$company_code}";
         
-        error_log("PriceListService: Endpoint: {$endpoint}");
         
         $priceLists = $this->makeApiRequest($endpoint);
         
-        error_log('PriceListService: Respuesta raw de API: ' . substr(print_r($priceLists, true), 0, 1000));
 
 
         
         if ($priceLists !== false && is_array($priceLists)) {
-            error_log('PriceListService: ' . count($priceLists) . ' listas de precios obtenidas');
 
             
 
@@ -99,7 +95,6 @@ class PriceListService extends BaseApiService {
             ];
         }
         
-        error_log('PriceListService: Error - No se pudieron obtener listas de precios válidas');
         return [
             'success' => false,
             'message' => 'No se pudieron obtener las listas de precios del ERP'

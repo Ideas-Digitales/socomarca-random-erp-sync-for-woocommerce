@@ -5,8 +5,6 @@ namespace Socomarca\RandomERP\Services;
 class EntityService extends BaseApiService {
     
     public function getEntities() {
-        error_log('EntityService: Obteniendo entidades...');
-        
         $company_code = get_option('sm_company_code', '01');
         $company_rut = get_option('sm_company_rut', '134549696');
         
@@ -14,34 +12,26 @@ class EntityService extends BaseApiService {
         $entities = $this->makeApiRequest($endpoint);
         
         if ($entities !== false && is_array($entities)) {
-            error_log('EntityService: ' . count($entities) . ' entidades obtenidas');
             return [
                 'quantity' => count($entities),
                 'items' => $entities
             ];
         }
         
-        error_log('EntityService: Error - No se pudieron obtener entidades válidas');
         return false;
     }
     
     public function createUsersFromEntities() {
-        error_log('EntityService: Iniciando creación de usuarios...');
-        
         $entities = $this->getEntities();
         
         if (!$entities || !is_array($entities['items'])) {
-            error_log('EntityService: Error - No se pudieron obtener las entidades');
             return [
                 'success' => false,
                 'message' => 'No se pudieron obtener las entidades'
             ];
         }
         
-        
         update_option('sm_entities_cache', $entities['items']);
-        
-        error_log('EntityService: Éxito - ' . $entities['quantity'] . ' entidades guardadas en cache');
         
         return [
             'success' => true,
@@ -99,7 +89,10 @@ class EntityService extends BaseApiService {
                     $user_data['ID'] = $user_id;
                     $result = wp_update_user($user_data);
 
-                    $this->assing_user_to_b2bking_group($user_id, $entidad['KOLTVEN']);
+                    // Safe call to B2B King group assignment
+                    if (isset($entidad['KOLTVEN']) && is_array($entidad['KOLTVEN'])) {
+                        $this->assing_user_to_b2bking_group($user_id, $entidad['KOLTVEN']);
+                    }
                     $this->update_woocommerce_data($user_id, $entidad, $user_data);
                     
                     if (is_wp_error($result)) {
@@ -113,16 +106,20 @@ class EntityService extends BaseApiService {
                     $user_data['user_pass'] = wp_generate_password();
                     $user_id = wp_insert_user($user_data);
 
-                    $this->assing_user_to_b2bking_group($user_id, $entidad['KOLTVEN']);
+                    if (is_wp_error($user_id)) {
+                        $errors[] = 'Error creando usuario ' . $rut . ': ' . $user_id->get_error_message();
+                        continue;
+                    }
+
+                    // Safe call to B2B King group assignment
+                    if (isset($entidad['KOLTVEN']) && is_array($entidad['KOLTVEN'])) {
+                        $this->assing_user_to_b2bking_group($user_id, $entidad['KOLTVEN']);
+                    }
                     $this->update_woocommerce_data($user_id, $entidad, $user_data);
 
                     //Enviar correo para que el usuario cambie su contraseña
                     if($batch_count == 10) {  //Esto es temporal, para no saturar mi cuenta de mailtrap, asi solo envua un solo email por request
                         $this->send_password_change_email($user_id);
-                    }
-                    if (is_wp_error($user_id)) {
-                        $errors[] = 'Error creando usuario ' . $rut . ': ' . $user_id->get_error_message();
-                    http://localhost:8081/wp-admin/admin.php?page=socomarca#    continue;
                     }
                     
                     $created_users++;
@@ -137,7 +134,6 @@ class EntityService extends BaseApiService {
             } catch (Exception $e) {
                 $errors[] = 'Error procesando entidad: ' . $e->getMessage();
             }
-            $batch_count++;
         }
         
         $processed = $offset + count($batch);
@@ -188,12 +184,9 @@ class EntityService extends BaseApiService {
                     $result = wp_delete_user($user->ID);
                     if ($result) {
                         $deleted_count++;
-                        error_log("Usuario eliminado: {$user->user_login} (ID: {$user->ID})");
                     } else {
                         $errors[] = "Error eliminando usuario: {$user->user_login}";
                     }
-                } else {
-                    error_log("Usuario admin protegido: {$user->user_login} (ID: {$user->ID})");
                 }
             }
             
@@ -274,7 +267,6 @@ class EntityService extends BaseApiService {
 
         
         if (!$user) {
-            error_log("EntityService: Usuario no encontrado para ID: $user_id");
             return false;
         }
         
@@ -282,7 +274,6 @@ class EntityService extends BaseApiService {
         $result = retrieve_password($user->user_login);
         
         if (is_wp_error($result)) {
-            error_log("EntityService: Error enviando email de reseteo para usuario {$user->user_login}: " . $result->get_error_message());
             return false;
         }
         

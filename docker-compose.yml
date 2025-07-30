@@ -34,6 +34,30 @@ services:
     networks:
       - default
 
+  #MySQL Service
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    tty: true
+    ports:
+      - '3306:3306'
+    environment:
+      MYSQL_DATABASE: socomarca_wp
+      MYSQL_USER: socomarca
+      MYSQL_PASSWORD: socomarca123
+      MYSQL_ROOT_PASSWORD: root123
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - default
+
 #Docker Networks
 networks:
   default:
+
+#Volumes
+volumes:
+  mysql_data:
+    driver: local

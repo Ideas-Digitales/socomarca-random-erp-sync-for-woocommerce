@@ -5,48 +5,34 @@ namespace Socomarca\RandomERP\Services;
 class CategoryService extends BaseApiService {
     
     public function getCategories() {
-        error_log('CategoryService: Obteniendo categorías...');
-        
         $endpoint = "/familias";
         $categories = $this->makeApiRequest($endpoint);
         
-        error_log('CategoryService: Respuesta raw de API: ' . substr(print_r($categories, true), 0, 1000));
-        
         if ($categories !== false && is_array($categories)) {
-            error_log('CategoryService: ' . count($categories) . ' categorías obtenidas');
             return [
                 'quantity' => count($categories),
                 'items' => $categories
             ];
         }
         
-        error_log('CategoryService: Error - No se pudieron obtener categorías válidas');
         return false;
     }
     
     public function processCategories() {
-        error_log('CategoryService: Iniciando procesamiento de categorías');
-        
         $categories = $this->getCategories();
         
-        error_log('CategoryService: Respuesta de getCategories: ' . print_r($categories, true));
-        
         if (!$categories || !isset($categories['items'])) {
-            error_log('CategoryService: Error - No hay categorías válidas para procesar');
             return [
                 'success' => false,
                 'message' => 'No se pudieron obtener las categorías del ERP'
             ];
         }
         
-        error_log('CategoryService: Procesando ' . count($categories['items']) . ' categorías...');
-        
         $created_categories = 0;
         $updated_categories = 0;
         $errors = [];
         
         for ($nivel = 1; $nivel <= 3; $nivel++) {
-            error_log("CategoryService: Iniciando procesamiento nivel $nivel");
             $level_count = 0;
             
             foreach ($categories['items'] as $category) {
@@ -58,7 +44,6 @@ class CategoryService extends BaseApiService {
                     }
                     
                     $level_count++;
-                    error_log("CategoryService: Procesando nivel $nivel - {$category['CODIGO']}: {$category['NOMBRE']}");
                     
                     if ($nivel == 1) {
                         $result = $this->processLevelOneCategory($category);
@@ -66,19 +51,14 @@ class CategoryService extends BaseApiService {
                         $result = $this->processSubCategory($category, $nivel);
                     }
                     
-                    error_log("CategoryService: Resultado para {$category['CODIGO']}: " . print_r($result, true));
-                    
                     if ($result['success']) {
                         if ($result['action'] === 'created') {
                             $created_categories++;
-                            error_log("CategoryService: ✓ Creada - {$category['CODIGO']}");
                         } else {
                             $updated_categories++;
-                            error_log("CategoryService: ✓ Actualizada - {$category['CODIGO']}");
                         }
                     } else {
                         $errors[] = $result['error'];
-                        error_log("CategoryService: ✗ Error - {$category['CODIGO']}: {$result['error']}");
                     }
                     
                 } catch (Exception $e) {
@@ -86,7 +66,6 @@ class CategoryService extends BaseApiService {
                 }
             }
             
-            error_log("CategoryService: Nivel $nivel completado. Procesadas: $level_count categorías");
         }
         
         $wc_categories = get_terms([
@@ -102,8 +81,6 @@ class CategoryService extends BaseApiService {
         if (!empty($errors)) {
             $message .= ". Errores: " . implode(', ', $errors);
         }
-        
-        error_log("CategoryService: $message");
         
         return [
             'success' => true,
@@ -127,7 +104,6 @@ class CategoryService extends BaseApiService {
             $result = wp_update_term($existing_term->term_id, 'product_cat', $term_data);
             if (!is_wp_error($result)) {
                 $this->saveTermMeta($existing_term->term_id, $category);
-                error_log("CategoryService: Actualizada categoría nivel 1 - {$category['CODIGO']}");
                 return ['success' => true, 'action' => 'updated'];
             } else {
                 return ['success' => false, 'error' => 'Error actualizando categoría ' . $category['CODIGO'] . ': ' . $result->get_error_message()];
@@ -136,7 +112,6 @@ class CategoryService extends BaseApiService {
             $result = wp_insert_term($term_data['name'], 'product_cat', $term_data);
             if (!is_wp_error($result)) {
                 $this->saveTermMeta($result['term_id'], $category);
-                error_log("CategoryService: Creada categoría nivel 1 - {$category['CODIGO']}");
                 return ['success' => true, 'action' => 'created'];
             } else {
                 return ['success' => false, 'error' => 'Error creando categoría ' . $category['CODIGO'] . ': ' . $result->get_error_message()];
@@ -155,7 +130,6 @@ class CategoryService extends BaseApiService {
             $parent_code = isset($parent_key_parts[1]) ? $parent_key_parts[1] : $parent_key_parts[0];
         }
         
-        error_log("CategoryService: Buscando padre '$parent_code' para {$category['CODIGO']}");
         
         
         $parent_term = get_terms([
@@ -187,21 +161,17 @@ class CategoryService extends BaseApiService {
         $existing_term = get_term_by('slug', $term_data['slug'], 'product_cat');
         
         if ($existing_term) {
-            
             $result = wp_update_term($existing_term->term_id, 'product_cat', $term_data);
             if (!is_wp_error($result)) {
                 $this->saveTermMeta($existing_term->term_id, $category);
-                error_log("CategoryService: Actualizada subcategoría nivel $nivel - {$category['CODIGO']}");
                 return ['success' => true, 'action' => 'updated'];
             } else {
                 return ['success' => false, 'error' => 'Error actualizando subcategoría ' . $category['CODIGO'] . ': ' . $result->get_error_message()];
             }
         } else {
-            
             $result = wp_insert_term($term_data['name'], 'product_cat', $term_data);
             if (!is_wp_error($result)) {
                 $this->saveTermMeta($result['term_id'], $category);
-                error_log("CategoryService: Creada subcategoría nivel $nivel - {$category['CODIGO']}");
                 return ['success' => true, 'action' => 'created'];
             } else {
                 return ['success' => false, 'error' => 'Error creando subcategoría ' . $category['CODIGO'] . ': ' . $result->get_error_message()];
@@ -216,8 +186,6 @@ class CategoryService extends BaseApiService {
     }
     
     public function deleteAllCategories() {
-        error_log('CategoryService: Iniciando eliminación masiva de categorías');
-        
         try {
             
             $categories = get_terms([
@@ -248,8 +216,6 @@ class CategoryService extends BaseApiService {
                 $message .= " Errores encontrados: " . implode(', ', $errors);
             }
             
-            error_log("CategoryService: $message");
-            
             return [
                 'success' => true,
                 'message' => $message,
@@ -258,8 +224,6 @@ class CategoryService extends BaseApiService {
             ];
             
         } catch (Exception $e) {
-            error_log('CategoryService: Error - ' . $e->getMessage());
-            
             return [
                 'success' => false,
                 'message' => 'Error al eliminar categorías: ' . $e->getMessage()

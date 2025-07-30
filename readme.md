@@ -13,11 +13,69 @@ Plugin avanzado que permite sincronizar datos completos de WooCommerce con Rando
 - PHPUnit (para testing)
 
 
-## Dockerizacion
-Se recomienda usar la imagen de docker de wordpress: javieraguerocl/docker-php8.2-with-db-extensions para este proyecto
-https://hub.docker.com/r/javieraguerocl/docker-php8.2-with-db-extensions
+## Dockerización
 
-Se adjunta el docker-compose.yml para instalar en la **base de wordpres**
+### Stack Completo con Docker
+El proyecto incluye un `docker-compose.yml` con todos los servicios necesarios:
+- **PHP 8.2** con extensiones de base de datos
+- **Nginx** como servidor web
+- **MySQL 8.0** como base de datos
+
+### Servicios Docker
+
+#### PHP Service (app)
+- Imagen: `javieraguerocl/docker-php8.2-with-db-extensions`
+- Documentación: https://hub.docker.com/r/javieraguerocl/docker-php8.2-with-db-extensions
+- Puerto: Interno (comunicación con Nginx)
+- Volúmenes: Código fuente y configuraciones PHP
+
+#### Nginx Service (webserver)
+- Imagen: `nginx:alpine`
+- Puerto: `80:80`
+- Sirve la aplicación PHP
+
+#### MySQL Service (mysql)
+- Imagen: `mysql:8.0`
+- Puerto: `3306:3306`
+- Base de datos: `socomarca_wp`
+- Usuario: `socomarca` / Contraseña: `socomarca123`
+- Root: `root123`
+- Volumen persistente: `mysql_data`
+
+### Comandos Docker
+
+#### Iniciar servicios:
+```bash
+docker-compose up -d
+```
+
+#### Ver logs:
+```bash
+docker-compose logs -f
+```
+
+#### Acceder al contenedor PHP:
+```bash
+docker-compose exec app bash
+```
+
+#### Acceder a MySQL:
+```bash
+docker-compose exec mysql mysql -u socomarca -p socomarca_wp
+```
+
+#### Detener servicios:
+```bash
+docker-compose down
+```
+
+### Configuración de Base de Datos para WordPress
+
+Una vez iniciados los servicios, configura WordPress con:
+- **Host**: `mysql` (nombre del servicio)
+- **Base de datos**: `socomarca_wp`
+- **Usuario**: `socomarca`
+- **Contraseña**: `socomarca123`
 
 
 ## Instalación
@@ -143,17 +201,65 @@ Para limpiar datos antes de re-sincronizar:
 - Revisa que las variaciones tengan atributos correctos
 - El stock se mapea desde el campo `stockventa` del ERP
 
-### Testing
+## Testing
 
-Instalar DB de desarrollo:
-./install-wp-tests.sh <db-name> <db-user> <db-pass> [db-host] [wp-version]
-- `./bin/install-wp-tests.sh socomarca_test root root mysql latest`
+El plugin incluye pruebas automatizadas usando **Pest PHP** para garantizar la calidad del código y funcionalidad.
 
-Instalar dependencias:
-`composer install`
+### Configuración de Testing
 
-Ejecutar tests:
-`./vendor/bin/phpunit`
+#### Instalar dependencias:
+```bash
+composer install
+```
+
+### Ejecutar Pruebas
+
+#### Comandos principales:
+```bash
+./vendor/bin/pest                              # Unitarias + Feature (por defecto)
+./vendor/bin/pest tests/Integration/           # Integración (requiere API real)
+./vendor/bin/pest tests/Unit/BaseApiServiceTest.php  # Test específico
+```
+
+#### Script automatizado para integración:
+```bash
+./run-integration-tests.sh                    # Todas las pruebas de integración
+./run-integration-tests.sh Category           # Solo CategoryService
+```
+
+### Tipos de Pruebas
+
+#### Unitarias (11 pruebas)
+- **BaseApiService**: Constructor, autenticación, configuración, manejo de errores
+- Ejecutan sin conexión externa, usan mocks
+
+#### Integración (70+ pruebas) 
+- **CategoryService**: Obtención, procesamiento, validación de categorías
+- **EntityService**: Entidades, usuarios, validación de datos 
+- **ProductService**: Productos, cache, rendimiento, análisis de datos
+- **PriceListService**: Precios B2B, estructura, compatibilidad
+- Ejecutan con conexiones reales al API de Random ERP
+
+### Configuración para Pruebas de Integración
+
+Para pruebas con API real, configura credenciales:
+
+```bash
+# 1. Copia configuración
+cp .env.testing .env.testing.local
+
+# 2. Edita credenciales
+RANDOM_ERP_API_USER=tu_usuario@ejemplo.com
+RANDOM_ERP_API_PASSWORD=tu_password
+RANDOM_ERP_COMPANY_CODE=01
+```
+
+### Notas de Testing
+
+- Las pruebas unitarias usan mocks para WordPress y HTTP
+- Las pruebas de integración requieren credenciales válidas del ERP
+- Por defecto `./vendor/bin/pest` ejecuta solo unitarias y feature
+- Para integración usar `./vendor/bin/pest tests/Integration/`
 
 
 ## Changelog
@@ -165,7 +271,14 @@ Ejecutar tests:
 - **Procesamiento por lotes**: Para todos los tipos de datos con progreso visual
 - **Eliminación masiva**: Sistema de limpieza por lotes con confirmación
 - **Arquitectura moderna**: Servicios separados y AJAX handlers especializados
-- **Testing integrado**: PHPUnit y estructura de tests
+- **Suite de testing completa**: 
+  - Pest PHP como framework de testing moderno
+  - 11 pruebas unitarias para BaseApiService
+  - 70+ pruebas de integración con API real para todos los servicios
+  - Script automatizado para pruebas de integración
+  - Configuración por variables de entorno
+  - Análisis de rendimiento y calidad de datos
+- **Docker Stack**: MySQL 8.0, Nginx, PHP 8.2 con extensiones
 - **Logging avanzado**: Trazabilidad completa de operaciones
 
 ### v1.0.0 (Anterior)

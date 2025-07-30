@@ -7,12 +7,10 @@ use Exception;
 class ProductService extends BaseApiService {
     
     public function getProducts() {
-        error_log('ProductService: Obteniendo productos...');
-        
+                
         $products = $this->makeApiRequest('/productos');
         
         if ($products !== false) {
-            error_log('ProductService: ' . count($products) . ' productos obtenidos');
             return [
                 'quantity' => count($products),
                 'items' => $products
@@ -23,7 +21,6 @@ class ProductService extends BaseApiService {
     }
     
     public function processProducts() {
-        error_log('ProductService: Iniciando proceso');
         
         $products = $this->getProducts();
         
@@ -37,7 +34,6 @@ class ProductService extends BaseApiService {
         
         \update_option('sm_products_cache', $products['items']);
         
-        error_log('ProductService: Éxito - ' . $products['quantity'] . ' productos guardados en cache');
         
         return [
             'success' => true,
@@ -67,7 +63,6 @@ class ProductService extends BaseApiService {
         
         foreach ($batch as $product) {
             try {
-                error_log("ProductService: Procesando producto {$product['KOPR']}: {$product['NOKOPR']}");
                 
                 $result = $this->processProduct($product);
                 
@@ -83,7 +78,6 @@ class ProductService extends BaseApiService {
                 
             } catch (Exception $e) {
                 $errors[] = 'Error procesando producto ' . $product['KOPR'] . ': ' . $e->getMessage();
-                error_log("ProductService: Exception - {$product['KOPR']}: " . $e->getMessage());
             }
         }
         
@@ -104,7 +98,6 @@ class ProductService extends BaseApiService {
             \delete_option('sm_total_updated_products');
         }
         
-        error_log("ProductService: Lote procesado - $created_products creados, $updated_products actualizados");
         
         return [
             'success' => true,
@@ -154,9 +147,7 @@ class ProductService extends BaseApiService {
             
             if (!empty($main_category)) {
                 $category_ids[] = $main_category[0]->term_id;
-                error_log("ProductService: Categoría principal encontrada: {$product['FMPR']} -> ID {$main_category[0]->term_id}");
             } else {
-                error_log("ProductService: Categoría principal no encontrada: {$product['FMPR']}");
             }
         }
         
@@ -177,9 +168,7 @@ class ProductService extends BaseApiService {
             
             if (!empty($subcategory)) {
                 $category_ids[] = $subcategory[0]->term_id;
-                error_log("ProductService: Subcategoría encontrada: {$product['PFPR']} -> ID {$subcategory[0]->term_id}");
             } else {
-                error_log("ProductService: Subcategoría no encontrada: {$product['PFPR']}");
             }
         }
         
@@ -205,7 +194,6 @@ class ProductService extends BaseApiService {
         // Handle different product types
         if ($wc_product->is_type('simple')) {
             // Convert simple product to variable product
-            error_log("ProductService: Convirtiendo producto simple a variable - {$product['KOPR']}");
             
             // Delete the simple product and create a new variable product
             \wp_delete_post($product_id, true);
@@ -224,7 +212,6 @@ class ProductService extends BaseApiService {
         // Save product meta
         $this->saveProductMeta($product_id, $product);
         
-        error_log("ProductService: Producto actualizado - {$product['KOPR']}");
         return ['success' => true, 'action' => 'updated'];
     }
     
@@ -240,7 +227,6 @@ class ProductService extends BaseApiService {
         // Delete all existing variations and recreate with "UN"
         foreach ($existing_variations as $variation_id) {
             \wp_delete_post($variation_id, true);
-            error_log("ProductService: Variación eliminada - ID $variation_id");
         }
         
         // Get parent product to update attributes
@@ -256,7 +242,6 @@ class ProductService extends BaseApiService {
             
             // Create new variations
             $created_count = $this->createProductVariations($parent_id, $new_variations_data);
-            error_log("ProductService: Recreadas $created_count variaciones para producto $parent_id con 'UN'");
         }
     }
     
@@ -287,12 +272,10 @@ class ProductService extends BaseApiService {
         
         $this->saveProductMeta($product_id, $product);
         
-        error_log("ProductService: Producto simple creado - {$product['KOPR']} -> ID $product_id");
         return ['success' => true, 'action' => 'created'];
     }
     
     private function createVariableProduct($product, $category_ids, $variations_data) {
-        error_log("ProductService: Creando producto variable - {$product['KOPR']}");
         
         // Create the parent variable product
         $variable_product = new \WC_Product_Variable();
@@ -325,7 +308,6 @@ class ProductService extends BaseApiService {
         // Create individual variations
         $variations_created = $this->createProductVariations($parent_id, $variations_data);
         
-        error_log("ProductService: Producto variable creado - {$product['KOPR']} -> ID $parent_id con $variations_created variaciones");
         return ['success' => true, 'action' => 'created'];
     }
     
@@ -339,7 +321,6 @@ class ProductService extends BaseApiService {
         // Generate single combination for "UN"
         $this->generateVariationCombinations($variations_data, $product);
         
-        error_log("ProductService: Creando variación 'Unidad' = 'UN' por defecto para {$product['KOPR']}");
         
         return $variations_data;
     }
@@ -530,13 +511,10 @@ class ProductService extends BaseApiService {
                     \update_post_meta($variation_id, '_erp_variation_id', $combination['erp_id']);
                     $created_count++;
                     
-                    error_log("ProductService: Variación creada - {$combination['sku']} -> ID $variation_id");
                 } else {
-                    error_log("ProductService: Error creando variación - {$combination['sku']}");
                 }
                 
             } catch (Exception $e) {
-                error_log("ProductService: Exception creando variación: " . $e->getMessage());
             }
         }
         
@@ -550,7 +528,6 @@ class ProductService extends BaseApiService {
     }
     
     public function deleteAllProducts() {
-        error_log('ProductService: Iniciando eliminación masiva de productos');
         
         try {
             
@@ -579,7 +556,6 @@ class ProductService extends BaseApiService {
                     
                     if ($result) {
                         $deleted_count++;
-                        error_log("ProductService: Producto eliminado ID: $product_id");
                     } else {
                         $errors[] = "Error al eliminar producto ID: $product_id";
                     }
@@ -599,7 +575,6 @@ class ProductService extends BaseApiService {
                 }
             }
             
-            error_log("ProductService: $message");
             
             return [
                 'success' => true,
@@ -609,7 +584,6 @@ class ProductService extends BaseApiService {
             ];
             
         } catch (Exception $e) {
-            error_log('ProductService: Error - ' . $e->getMessage());
             
             return [
                 'success' => false,
@@ -628,9 +602,7 @@ class ProductService extends BaseApiService {
             
             $wpdb->query("DELETE tr FROM {$wpdb->term_relationships} tr LEFT JOIN {$wpdb->posts} p ON p.ID = tr.object_id WHERE p.ID IS NULL");
             
-            error_log('ProductService: Limpieza de metadatos y relaciones completada');
         } catch (Exception $e) {
-            error_log('ProductService: Error en limpieza: ' . $e->getMessage());
         }
     }
 }

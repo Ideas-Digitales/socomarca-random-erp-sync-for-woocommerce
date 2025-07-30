@@ -25,8 +25,6 @@ abstract class BaseApiService {
     }
     
     protected function authenticate() {
-        error_log('BaseApiService: Autenticando...');
-        
         $args = [
             'method' => 'POST',
             'timeout' => 30,
@@ -43,32 +41,29 @@ abstract class BaseApiService {
         $response = wp_remote_post($this->api_url . '/login', $args);
         
         if (is_wp_error($response)) {
-            error_log('BaseApiService: Error de autenticación - ' . $response->get_error_message());
             return false;
         }
         
+        $status_code = wp_remote_retrieve_response_code($response);
         $body = wp_remote_retrieve_body($response);
+        
         $data = json_decode($body, true);
         
         if (isset($data['token'])) {
             update_option('random_erp_token', $data['token']);
-            error_log('BaseApiService: Token obtenido exitosamente');
             return $data['token'];
         }
         
-        error_log('BaseApiService: Error - No se encontró token en la respuesta');
         return false;
     }
     
     protected function makeApiRequest($endpoint, $method = 'GET', $data = null) {
         $token = $this->getAuthToken();
         if (!$token) {
-            error_log('BaseApiService: No se pudo obtener token de autenticación');
             return false;
         }
         
         $url = $this->api_url . $endpoint;
-        error_log("BaseApiService: Realizando petición {$method} a {$url}");
         
         $args = [
             'method' => $method,
@@ -86,14 +81,11 @@ abstract class BaseApiService {
         $response = wp_remote_request($url, $args);
         
         if (is_wp_error($response)) {
-            error_log('BaseApiService: Error en petición - ' . $response->get_error_message());
             return false;
         }
         
         $status_code = wp_remote_retrieve_response_code($response);
         $body_raw = wp_remote_retrieve_body($response);
-        
-        error_log("BaseApiService: Status Code = {$status_code}");
         
         if ($status_code === 200) {
             $body = json_decode($body_raw, true);
@@ -106,12 +98,10 @@ abstract class BaseApiService {
                 return $body;
             }
             
-            error_log('BaseApiService: Estructura de respuesta inesperada: ' . substr(print_r($body, true), 0, 500));
             return false;
         }
         
         if ($status_code === 401) {
-            error_log('BaseApiService: Token expirado, re-autenticando...');
             delete_option('random_erp_token');
             $new_token = $this->authenticate();
             if ($new_token) {
@@ -132,7 +122,6 @@ abstract class BaseApiService {
             }
         }
         
-        error_log("BaseApiService: Error HTTP {$status_code}: {$body_raw}");
         return false;
     }
 }
