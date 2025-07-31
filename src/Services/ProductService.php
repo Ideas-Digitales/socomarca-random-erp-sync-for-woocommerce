@@ -377,7 +377,7 @@ class ProductService extends BaseApiService {
     
     private function generateVariationCombinations(&$variations_data, $product) {
         $base_sku = $product['KOPR'];
-        $base_price = 10000; // Default price
+        $base_price = 0; // Default price
         $counter = 1;
         
         // Handle different variation types

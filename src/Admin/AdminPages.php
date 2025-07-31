@@ -89,6 +89,7 @@ class AdminPages {
         $company_rut = sanitize_text_field($_POST['sm_company_rut'] ?? '');
         $company_warehouse = sanitize_text_field($_POST['sm_company_warehouse'] ?? '');
         $product_type = sanitize_text_field($_POST['sm_product_type'] ?? 'auto');
+        $invoice_on_completion = isset($_POST['sm_invoice_on_completion']) ? 1 : 0;
         
         
         update_option('sm_api_url', $api_url);
@@ -98,6 +99,7 @@ class AdminPages {
         update_option('sm_company_rut', $company_rut);
         update_option('sm_company_warehouse', $company_warehouse);
         update_option('sm_product_type', $product_type);
+        update_option('sm_invoice_on_completion', $invoice_on_completion);
         
         
         delete_option('random_erp_token');
@@ -116,7 +118,8 @@ class AdminPages {
             'company_code' => get_option('sm_company_code', ''),
             'company_rut' => get_option('sm_company_rut', ''),
             'company_warehouse' => get_option('sm_company_warehouse', ''),
-            'product_type' => get_option('sm_product_type', 'auto')
+            'product_type' => get_option('sm_product_type', 'auto'),
+            'invoice_on_completion' => get_option('sm_invoice_on_completion', false)
         ];
     }
 }

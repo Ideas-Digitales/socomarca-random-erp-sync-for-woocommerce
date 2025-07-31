@@ -2,3 +2,4 @@ vendor/
 CLAUDE.md
 .claude
 composer.lock
+logs/

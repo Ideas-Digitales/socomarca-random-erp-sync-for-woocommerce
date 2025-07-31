@@ -9,6 +9,7 @@ use Socomarca\RandomERP\Ajax\ProductAjaxHandler;
 use Socomarca\RandomERP\Ajax\PriceListAjaxHandler;
 use Socomarca\RandomERP\Ajax\CombinedAjaxHandler;
 use Socomarca\RandomERP\Admin\AdminPages;
+use Socomarca\RandomERP\Services\DocumentService;
 
 class Plugin {
     
@@ -50,6 +51,9 @@ class Plugin {
         
         
         new AdminPages();
+        
+        
+        new DocumentService();
         
         error_log('Socomarca ERP: Componentes inicializados exitosamente');
     }

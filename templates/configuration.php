@@ -214,6 +214,18 @@
                     </tr>
                     <tr>
                         <th>
+                            Facturación automática
+                        </th>
+                        <td>
+                            <label>
+                                <input name="sm_invoice_on_completion" type="checkbox" id="sm_invoice_on_completion" value="1" <?php checked($invoice_on_completion, true); ?> />
+                                Facturar al completar una orden
+                            </label>
+                            <p class="description">Cuando esta opción esté activada, se creará automáticamente una factura en Random ERP cuando una orden pase al estado "Completada"</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
                             Tipo de productos
                         </th>
                         <td>
