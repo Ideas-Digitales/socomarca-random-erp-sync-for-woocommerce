@@ -90,6 +90,8 @@ class AdminPages {
         $company_warehouse = sanitize_text_field($_POST['sm_company_warehouse'] ?? '');
         $product_type = sanitize_text_field($_POST['sm_product_type'] ?? 'auto');
         $invoice_on_completion = isset($_POST['sm_invoice_on_completion']) ? 1 : 0;
+        $cron_enabled = isset($_POST['sm_cron_enabled']) ? 1 : 0;
+        $cron_time = sanitize_text_field($_POST['sm_cron_time'] ?? '02:00');
         
         
         update_option('sm_api_url', $api_url);
@@ -100,6 +102,12 @@ class AdminPages {
         update_option('sm_company_warehouse', $company_warehouse);
         update_option('sm_product_type', $product_type);
         update_option('sm_invoice_on_completion', $invoice_on_completion);
+        update_option('sm_cron_enabled', $cron_enabled);
+        update_option('sm_cron_time', $cron_time);
+        
+        // Reconfigurar el cron job
+        $cronService = new \Socomarca\RandomERP\Services\CronSyncService();
+        $cronService->scheduleCronJob();
         
         
         delete_option('random_erp_token');
@@ -111,6 +119,8 @@ class AdminPages {
     }
     
     private function getConfiguration() {
+        $cronService = new \Socomarca\RandomERP\Services\CronSyncService();
+        
         return [
             'api_url' => get_option('sm_api_url', ''),
             'api_user' => get_option('sm_api_user', ''),
@@ -119,7 +129,10 @@ class AdminPages {
             'company_rut' => get_option('sm_company_rut', ''),
             'company_warehouse' => get_option('sm_company_warehouse', ''),
             'product_type' => get_option('sm_product_type', 'auto'),
-            'invoice_on_completion' => get_option('sm_invoice_on_completion', false)
+            'invoice_on_completion' => get_option('sm_invoice_on_completion', false),
+            'cron_enabled' => get_option('sm_cron_enabled', false),
+            'cron_time' => get_option('sm_cron_time', '02:00'),
+            'last_sync' => $cronService->getLastSyncInfo()
         ];
     }
 }

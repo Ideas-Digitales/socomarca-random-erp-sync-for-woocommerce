@@ -606,4 +606,54 @@ jQuery(document).ready(function($) {
         var target = $(this).attr('href');
         $(target).addClass('active').show();
     });
+    
+    // Sincronización manual completa
+    $('#sm_manual_sync').click(function(e) {
+        e.preventDefault();
+        
+        var $button = $(this);
+        var $result = $('#sm_manual_sync_result');
+        
+        $.ajax({
+            url: socomarca_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'sm_manual_sync',
+                nonce: socomarca_ajax.nonce
+            },
+            beforeSend: function() {
+                $button.addClass('disabled').text('Ejecutando...');
+                $result.html('<div class="loader"></div> <span style="color: #0073aa;">Ejecutando sincronización completa, esto puede tomar varios minutos...</span>');
+            },
+            success: function(response) {
+                $button.removeClass('disabled').text('Ejecutar sincronización completa');
+                
+                if (response.success) {
+                    var message = '<span style="color: #46b450;">✅ ' + response.data.message + '</span>';
+                    message += '<br><strong>Tiempo de ejecución:</strong> ' + response.data.execution_time + ' segundos';
+                    
+                    if (response.data.results) {
+                        message += '<br><details style="margin-top: 10px;">';
+                        message += '<summary style="cursor: pointer; color: #0073aa;">Ver detalles de resultados</summary>';
+                        message += '<pre style="background: #f1f1f1; padding: 10px; margin-top: 10px; border-radius: 4px; font-size: 12px; overflow-x: auto;">';
+                        message += JSON.stringify(response.data.results, null, 2);
+                        message += '</pre></details>';
+                    }
+                    
+                    $result.html(message);
+                    
+                    // Recargar la página después de 3 segundos para mostrar la información actualizada
+                    setTimeout(function() {
+                        location.reload();
+                    }, 3000);
+                } else {
+                    $result.html('<span style="color: #dc3232;">❌ ' + response.data.message + '</span>');
+                }
+            },
+            error: function(xhr, status, error) {
+                $button.removeClass('disabled').text('Ejecutar sincronización completa');
+                $result.html('<span style="color: #dc3232;">❌ Error de conexión: ' + error + '</span>');
+            }
+        });
+    });
 });

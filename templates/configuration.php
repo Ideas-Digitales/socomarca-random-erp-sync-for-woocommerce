@@ -256,6 +256,87 @@
                     </tr>
                 </tbody>
             </table>
+            
+            <h2>Sincronización Automática</h2>
+            <table class="form-table">
+                <tbody>
+                    <tr>
+                        <th>
+                            Sincronización automática
+                        </th>
+                        <td>
+                            <label>
+                                <input name="sm_cron_enabled" type="checkbox" id="sm_cron_enabled" value="1" <?php checked($cron_enabled, true); ?> />
+                                Habilitar sincronización automática diaria
+                            </label>
+                            <p class="description">Ejecuta automáticamente la sincronización completa (categorías → productos → precios → entidades) una vez al día</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
+                            Hora de sincronización
+                        </th>
+                        <td>
+                            <input name="sm_cron_time" type="time" id="sm_cron_time" value="<?php echo esc_attr($cron_time); ?>" class="regular-text">
+                            <p class="description">Hora a la que se ejecutará la sincronización automática (formato 24 horas)</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
+                            Estado del cron
+                        </th>
+                        <td>
+                            <?php 
+                            $next_scheduled = wp_next_scheduled('sm_erp_auto_sync');
+                            if ($next_scheduled): 
+                            ?>
+                                <span style="color: #46b450;">✅ Activo</span>
+                                <p class="description">Próxima ejecución: <?php echo date('Y-m-d H:i:s', $next_scheduled); ?></p>
+                            <?php else: ?>
+                                <span style="color: #dc3232;">❌ Inactivo</span>
+                                <p class="description">La sincronización automática no está programada</p>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <?php if ($last_sync): ?>
+                    <tr>
+                        <th>
+                            Última sincronización
+                        </th>
+                        <td>
+                            <strong>Fecha:</strong> <?php echo date('Y-m-d H:i:s', $last_sync['timestamp']); ?><br>
+                            <strong>Estado:</strong> 
+                            <?php if ($last_sync['status'] === 'success'): ?>
+                                <span style="color: #46b450;">✅ Exitosa</span>
+                            <?php else: ?>
+                                <span style="color: #dc3232;">❌ Error</span>
+                            <?php endif; ?>
+                            <br>
+                            <strong>Tiempo de ejecución:</strong> <?php echo $last_sync['execution_time']; ?> segundos<br>
+                            <?php if (isset($last_sync['error'])): ?>
+                                <strong>Error:</strong> <span style="color: #dc3232;"><?php echo esc_html($last_sync['error']); ?></span><br>
+                            <?php endif; ?>
+                            <?php if (isset($last_sync['results'])): ?>
+                                <details style="margin-top: 10px;">
+                                    <summary style="cursor: pointer; color: #0073aa;">Ver detalles de resultados</summary>
+                                    <pre style="background: #f1f1f1; padding: 10px; margin-top: 10px; border-radius: 4px; font-size: 12px; overflow-x: auto;"><?php echo esc_html(json_encode($last_sync['results'], JSON_PRETTY_PRINT)); ?></pre>
+                                </details>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <?php endif; ?>
+                    <tr>
+                        <th>
+                            Ejecutar ahora
+                        </th>
+                        <td>
+                            <a class="button" href="#" id="sm_manual_sync">Ejecutar sincronización completa</a>
+                            <span id="sm_manual_sync_result"></span>
+                            <p class="description">Ejecuta manualmente la sincronización completa en el orden correcto</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
             <p class="submit"><input type="submit" name="submit" id="submit" class="button button-primary" value="Guardar cambios"></p>
         </form>
     </div>

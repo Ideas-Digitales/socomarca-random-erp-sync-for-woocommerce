@@ -42,50 +42,74 @@ class PriceListService extends BaseApiService {
                         //Agrega meta a producto segun b2b king: https://woocommerce-b2b-plugin.com/docs/b2bking-tiered-pricing-setup-auto-generated-tiered-pricing-table/#2-toc-title
                         $meta_name = "b2bking_product_pricetiers_group_".$post_id;
 
+                        // Recopilar todas las unidades del producto
+                        $unidades_nombres = [];
+                        foreach ($data['unidades'] as $unidad) {
+                            $unidades_nombres[] = $unidad['nombre'];
+                        }
+
+                        // Actualizar el atributo "Unidad" del producto con todas las unidades
+                        $attributes = $product->get_attributes();
+                        $unidad_attribute = new \WC_Product_Attribute();
+                        $unidad_attribute->set_id(0);
+                        $unidad_attribute->set_name('Unidad');
+                        $unidad_attribute->set_options($unidades_nombres);
+                        $unidad_attribute->set_visible(true);
+                        $unidad_attribute->set_variation(true); // Para que pueda usarse en variaciones
+                        
+                        $attributes['pa_unidad'] = $unidad_attribute; // pa_ prefix para atributos globales
+                        $product->set_attributes($attributes);
+                        $product->save();
+
                         $variations = $this->get_product_variations($product->get_id());
+                        
+                        // Procesar cada variación individualmente
                         foreach ($variations as $variation) {
+                            $variation_object = wc_get_product($variation['id']);
+                            $variation_object->set_manage_stock(true);
+                            
+                            // Encontrar la unidad que corresponde a esta variación
+                            $matching_unidad = null;
                             foreach ($data['unidades'] as $unidad) {
-
-                                //Actualizar stock de la variacion
-                                $variation_object = wc_get_product($variation['id']);
-                                $variation_object->set_manage_stock(true); 
-                                $variation_object->set_stock_quantity($unidad['stockventa']);
-
-                                //Comparar el nombre de la unidad con los atributos de la variacion para ver si existen
-                                $found = false;
+                                // Comparar el nombre de la unidad con los atributos de la variación
                                 foreach ($variation['attributes'] as $attribute) {
                                     foreach ($attribute as $attribute_name => $attribute_value) {
-                                        if($attribute_value == $unidad['nombre']){ 
-                                            $found = true;
-                                           
-                                        } else {
-                                            //Si no existe, agrega el valor al atributo
-                                            //TODO: Agregar los valores de los atributos a la variacion.. quizas no es necesario
-                                            //$variation_object->set_attribute($attribute_name, $unidad['nombre']);
+                                        if ($attribute_value == $unidad['nombre']) {
+                                            $matching_unidad = $unidad;
+                                            break 3; // Salir de todos los loops
                                         }
                                     }
                                 }
-                                if ($found) {
-                                    update_post_meta($variation['id'], 'b2bking_regular_product_price_group_'.$post_id, $unidad['prunneto'][0]['f']);
-                                    $low_price = ''; //Para guardar el precio mas bajo y asignar la variacion sin grupo b2b
-                                    $b2b_king_values = "";
-                                    foreach ($unidad['prunneto'] as $prunneto) {
-                                        $b2b_king_values .= $prunneto['min'].':'.$prunneto['f'].';';
-                                        $low_price = $prunneto['f'];
-                                        if($low_price <= $prunneto['f']){
-                                            $low_price = $prunneto['f'];
-                                        }
-                                    }
-                                }
-                                //Precio de producto para el grupo b2bking
                             }
                             
-                            //Precio por defecto de la variacion
-                            $variation_object->set_regular_price($low_price);
-                            $variation_object->save();
+                            // Si encontramos la unidad correspondiente, actualizar stock y precios
+                            if ($matching_unidad) {
+                                // Actualizar stock con el valor correcto de esta unidad
+                                $variation_object->set_stock_quantity($matching_unidad['stockventa']);
+                                
+                                // Configurar precios B2B King
+                                update_post_meta($variation['id'], 'b2bking_regular_product_price_group_'.$post_id, $matching_unidad['prunneto'][0]['f']);
+                                
+                                $high_price = '';
+                                $b2b_king_values = "";
+                                foreach ($matching_unidad['prunneto'] as $prunneto) {
+                                    $b2b_king_values .= $prunneto['min'].':'.$prunneto['f'].';';
+                                    $high_price = $prunneto['f'];
+                                    if ($high_price >= $prunneto['f']) {
+                                        $high_price = $prunneto['f'];
+                                    }
+                                }
+                                
+                                // Precio por defecto de la variación
+                                $variation_object->set_regular_price($high_price);
+                                $variation_object->save();
 
-                            //Agregar precios a la variacion segun la lista de precios
-                            update_post_meta($variation['id'], $meta_name, $b2b_king_values);
+                                // Agregar precios a la variación según la lista de precios
+                                update_post_meta($variation['id'], $meta_name, $b2b_king_values);
+                            } else {
+                                // Si no se encuentra unidad correspondiente, al menos guardar la variación
+                                $variation_object->save();
+                            }
                         }
                     }
                 }
