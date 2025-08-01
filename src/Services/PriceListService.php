@@ -57,6 +57,7 @@ class PriceListService extends BaseApiService {
                                     foreach ($attribute as $attribute_name => $attribute_value) {
                                         if($attribute_value == $unidad['nombre']){ 
                                             $found = true;
+                                           
                                         } else {
                                             //Si no existe, agrega el valor al atributo
                                             //TODO: Agregar los valores de los atributos a la variacion.. quizas no es necesario
@@ -65,16 +66,18 @@ class PriceListService extends BaseApiService {
                                     }
                                 }
                                 if ($found) {
+                                    update_post_meta($variation['id'], 'b2bking_regular_product_price_group_'.$post_id, $unidad['prunneto'][0]['f']);
                                     $low_price = ''; //Para guardar el precio mas bajo y asignar la variacion sin grupo b2b
                                     $b2b_king_values = "";
                                     foreach ($unidad['prunneto'] as $prunneto) {
-                                        $b2b_king_values .= $prunneto['f'].':'.$prunneto['max'].';';
+                                        $b2b_king_values .= $prunneto['min'].':'.$prunneto['f'].';';
                                         $low_price = $prunneto['f'];
                                         if($low_price <= $prunneto['f']){
                                             $low_price = $prunneto['f'];
                                         }
                                     }
                                 }
+                                //Precio de producto para el grupo b2bking
                             }
                             
                             //Precio por defecto de la variacion
