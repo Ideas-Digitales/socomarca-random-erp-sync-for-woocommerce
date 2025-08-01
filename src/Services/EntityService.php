@@ -89,7 +89,7 @@ class EntityService extends BaseApiService {
                     $user_data['ID'] = $user_id;
                     $result = wp_update_user($user_data);
 
-                    // Safe call to B2B King group assignment
+                    // Llamada segura para asignación de grupo B2B King
                     if (isset($entidad['KOLTVEN']) && is_array($entidad['KOLTVEN'])) {
                         $this->assing_user_to_b2bking_group($user_id, $entidad['KOLTVEN']);
                     }
@@ -111,7 +111,7 @@ class EntityService extends BaseApiService {
                         continue;
                     }
 
-                    // Safe call to B2B King group assignment
+                    // Llamada segura para asignación de grupo B2B King
                     if (isset($entidad['KOLTVEN']) && is_array($entidad['KOLTVEN'])) {
                         $this->assing_user_to_b2bking_group($user_id, $entidad['KOLTVEN']);
                     }
@@ -217,7 +217,7 @@ class EntityService extends BaseApiService {
         }
 
 
-        //B2B King Solo soporta un grupo por usuario, si se agrega otro grupo se reemplaza el anterior
+        // B2B King solo soporta un grupo por usuario, si se agrega otro grupo se reemplaza el anterior
         foreach ($groups_ids as $group_id) {
             $user_group = get_user_meta($user_id, 'b2bking_customergroup', $group_id);
             if(!$user_group) {

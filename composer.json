@@ -26,5 +26,11 @@
         "allow-plugins": {
             "pestphp/pest-plugin": true
         }
+    },
+    "scripts": {
+        "test": "vendor/bin/pest",
+        "test:unit": "vendor/bin/pest tests/Unit/",
+        "test:integration": "vendor/bin/pest tests/Integration/",
+        "test:fast": "vendor/bin/pest tests/Unit/ --parallel"
     }
 }

@@ -181,7 +181,7 @@ class ProductService extends BaseApiService {
             return ['success' => false, 'error' => "Error obteniendo producto existente: {$product['KOPR']}"];
         }
         
-        // Update basic product information
+        // Actualizar información básica del producto
         $wc_product->set_name($product['NOKOPR']);
         $wc_product->set_sku($product['KOPR']);
         $wc_product->set_status('publish');
@@ -191,32 +191,32 @@ class ProductService extends BaseApiService {
             $wc_product->set_category_ids($category_ids);
         }
         
-        // Handle different product types
+        // Manejar diferentes tipos de productos
         if ($wc_product->is_type('simple')) {
-            // Convert simple product to variable product
+            // Convertir producto simple a producto variable
             
-            // Delete the simple product and create a new variable product
+            // Eliminar el producto simple y crear un nuevo producto variable
             \wp_delete_post($product_id, true);
             
-            // Create new variable product
+            // Crear nuevo producto variable
             $variations_data = $this->createDefaultVariations($product);
             return $this->createVariableProduct($product, $category_ids, $variations_data);
             
         } elseif ($wc_product->is_type('variable')) {
-            // For variable products, update variations if needed
+            // Para productos variables, actualizar variaciones si es necesario
             $this->updateProductVariations($product_id, null);
         }
         
         $wc_product->save();
         
-        // Save product meta
+        // Guardar meta del producto
         $this->saveProductMeta($product_id, $product);
         
         return ['success' => true, 'action' => 'updated'];
     }
     
     private function updateProductVariations($parent_id, $variations_data) {
-        // Get existing variations
+        // Obtener variaciones existentes
         $existing_variations = \wc_get_products([
             'type' => 'variation',
             'parent' => $parent_id,
@@ -224,29 +224,29 @@ class ProductService extends BaseApiService {
             'return' => 'ids'
         ]);
         
-        // Delete all existing variations and recreate with "UN"
+        // Eliminar todas las variaciones existentes y recrear con "UN"
         foreach ($existing_variations as $variation_id) {
             \wp_delete_post($variation_id, true);
         }
         
-        // Get parent product to update attributes
+        // Obtener producto padre para actualizar atributos
         $parent_product = \wc_get_product($parent_id);
         if ($parent_product) {
-            // Create new default variations
+            // Crear nuevas variaciones por defecto
             $new_variations_data = $this->createDefaultVariations(['KOPR' => $parent_product->get_sku()]);
             
-            // Update parent product attributes
+            // Actualizar atributos del producto padre
             $attributes = $this->createProductAttributes($new_variations_data);
             $parent_product->set_attributes($attributes);
             $parent_product->save();
             
-            // Create new variations
+            // Crear nuevas variaciones
             $created_count = $this->createProductVariations($parent_id, $new_variations_data);
         }
     }
     
     private function createNewProduct($product, $category_ids) {
-        // Always create variable products with "Unidad" = "UN" variation
+        // Siempre crear productos variables con variación "Unidad" = "UN"
         $variations_data = $this->createDefaultVariations($product);
         return $this->createVariableProduct($product, $category_ids, $variations_data);
     }
@@ -277,7 +277,7 @@ class ProductService extends BaseApiService {
     
     private function createVariableProduct($product, $category_ids, $variations_data) {
         
-        // Create the parent variable product
+        // Crear el producto variable padre
         $variable_product = new \WC_Product_Variable();
         $variable_product->set_name($product['NOKOPR']);
         $variable_product->set_sku($product['KOPR']);
@@ -289,36 +289,36 @@ class ProductService extends BaseApiService {
             $variable_product->set_category_ids($category_ids);
         }
         
-        // Create product attributes for variations
+        // Crear atributos de producto para variaciones
         $attributes = $this->createProductAttributes($variations_data);
         if (!empty($attributes)) {
             $variable_product->set_attributes($attributes);
         }
         
-        // Save the parent product
+        // Guardar el producto padre
         $parent_id = $variable_product->save();
         
         if (!$parent_id) {
             return ['success' => false, 'error' => "Error creando producto variable: {$product['KOPR']}"];
         }
         
-        // Save parent product meta
+        // Guardar meta del producto padre
         $this->saveProductMeta($parent_id, $product);
         
-        // Create individual variations
+        // Crear variaciones individuales
         $variations_created = $this->createProductVariations($parent_id, $variations_data);
         
         return ['success' => true, 'action' => 'created'];
     }
     
     private function createDefaultVariations($product) {
-        // Create default variation structure with "Unidad" = "UN" as the only variation
+        // Crear estructura de variación por defecto con "Unidad" = "UN" como única variación
         $variations_data = [
             'units' => ['UN'],
             'combinations' => []
         ];
         
-        // Generate single combination for "UN"
+        // Generar combinación única para "UN"
         $this->generateVariationCombinations($variations_data, $product);
         
         
@@ -326,23 +326,23 @@ class ProductService extends BaseApiService {
     }
     
     private function extractVariationsFromErpData($product) {
-        // For now, we'll create a default variation structure
-        // This can be modified based on actual ERP data structure
+        // Por ahora, crearemos una estructura de variación por defecto
+        // Esto puede modificarse basado en la estructura real de datos del ERP
         
-        // Example: If product has sizes or colors in ERP data
+        // Ejemplo: Si el producto tiene tallas o colores en los datos del ERP
         $variations_data = null;
         
-        // Check if product has variation indicators in its name or code
+        // Verificar si el producto tiene indicadores de variación en su nombre o código
         if (isset($product['NOKOPR'])) {
             $name = strtoupper($product['NOKOPR']);
             
-            // Look for size indicators in product name
+            // Buscar indicadores de talla en el nombre del producto
             $sizes = [];
             if (preg_match('/\b(XS|S|M|L|XL|XXL|XXXL)\b/', $name, $matches)) {
                 $sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
             }
             
-            // Look for color indicators or create default colors
+            // Buscar indicadores de color o crear colores por defecto
             $colors = [];
             if (strpos($name, 'NEGRO') !== false || strpos($name, 'BLACK') !== false) {
                 $colors[] = 'Negro';
@@ -354,12 +354,12 @@ class ProductService extends BaseApiService {
                 $colors[] = 'Azul';
             }
             
-            // If no specific colors found, add default ones for clothing-like products
+            // Si no se encuentran colores específicos, agregar los por defecto para productos tipo ropa
             if (empty($colors) && !empty($sizes)) {
                 $colors = ['Negro', 'Blanco', 'Azul'];
             }
             
-            // Create variations if we have attributes
+            // Crear variaciones si tenemos atributos
             if (!empty($sizes) || !empty($colors)) {
                 $variations_data = [
                     'sizes' => $sizes,
@@ -367,7 +367,7 @@ class ProductService extends BaseApiService {
                     'combinations' => []
                 ];
                 
-                // Generate combinations
+                // Generar combinaciones
                 $this->generateVariationCombinations($variations_data, $product);
             }
         }
@@ -377,14 +377,14 @@ class ProductService extends BaseApiService {
     
     private function generateVariationCombinations(&$variations_data, $product) {
         $base_sku = $product['KOPR'];
-        $base_price = 0; // Default price
+        $base_price = 0; // Precio por defecto
         $counter = 1;
         
-        // Handle different variation types
+        // Manejar diferentes tipos de variaciones
         if (!empty($variations_data['units'])) {
-            // For "Unidad" variations (default)
+            // Para variaciones de "Unidad" (por defecto)
             foreach ($variations_data['units'] as $unit) {
-                $variation_sku = $base_sku . '-' . str_pad($counter, 2, '0', STR_PAD_LEFT);
+                $variation_sku = $base_sku . '|' . str_pad($counter, 2, '0', STR_PAD_LEFT);
                 
                 $combination = [
                     'sku' => $variation_sku,
@@ -398,13 +398,13 @@ class ProductService extends BaseApiService {
                 $counter++;
             }
         } else {
-            // Handle size/color combinations (for auto-detected variations)
+            // Manejar combinaciones de talla/color (para variaciones auto-detectadas)
             $sizes = !empty($variations_data['sizes']) ? $variations_data['sizes'] : ['Único'];
             $colors = !empty($variations_data['colors']) ? $variations_data['colors'] : ['Único'];
             
             foreach ($sizes as $size) {
                 foreach ($colors as $color) {
-                    // Skip if both are "Único" (would create redundant variation)
+                    // Omitir si ambos son "Único" (crearía variación redundante)
                     if ($size === 'Único' && $color === 'Único') {
                         continue;
                     }
@@ -435,10 +435,10 @@ class ProductService extends BaseApiService {
     private function createProductAttributes($variations_data) {
         $attributes = [];
         
-        // Create Unit attribute if units exist (for "Unidad" variations)
+        // Crear atributo de Unidad si existen unidades (para variaciones de "Unidad")
         if (!empty($variations_data['units'])) {
             $unit_attribute = new \WC_Product_Attribute();
-            $unit_attribute->set_id(0); // Custom attribute
+            $unit_attribute->set_id(0); // Atributo personalizado
             $unit_attribute->set_name('Unidad');
             $unit_attribute->set_options($variations_data['units']);
             $unit_attribute->set_position(0);
@@ -447,10 +447,10 @@ class ProductService extends BaseApiService {
             $attributes['pa_unidad'] = $unit_attribute;
         }
         
-        // Create Size attribute if sizes exist
+        // Crear atributo de Talla si existen tallas
         if (!empty($variations_data['sizes'])) {
             $size_attribute = new \WC_Product_Attribute();
-            $size_attribute->set_id(0); // Custom attribute
+            $size_attribute->set_id(0); // Atributo personalizado
             $size_attribute->set_name('Talla');
             $size_attribute->set_options($variations_data['sizes']);
             $size_attribute->set_position(0);
@@ -459,10 +459,10 @@ class ProductService extends BaseApiService {
             $attributes['pa_talla'] = $size_attribute;
         }
         
-        // Create Color attribute if colors exist
+        // Crear atributo de Color si existen colores
         if (!empty($variations_data['colors'])) {
             $color_attribute = new \WC_Product_Attribute();
-            $color_attribute->set_id(0); // Custom attribute
+            $color_attribute->set_id(0); // Atributo personalizado
             $color_attribute->set_name('Color');
             $color_attribute->set_options($variations_data['colors']);
             $color_attribute->set_position(1);
@@ -482,7 +482,7 @@ class ProductService extends BaseApiService {
                 $variation = new \WC_Product_Variation();
                 $variation->set_parent_id($parent_id);
                 
-                // Set variation attributes
+                // Establecer atributos de variación
                 $attributes = [];
                 if (isset($combination['unit'])) {
                     $attributes['attribute_pa_unidad'] = \sanitize_title($combination['unit']);
@@ -496,18 +496,18 @@ class ProductService extends BaseApiService {
                 
                 $variation->set_attributes($attributes);
                 
-                // Set variation properties
+                // Establecer propiedades de variación
                 $variation->set_sku($combination['sku']);
                 $variation->set_regular_price($combination['price']);
                 $variation->set_stock_status($combination['stock_status']);
                 $variation->set_manage_stock(false);
                 $variation->set_status('publish');
                 
-                // Save the variation
+                // Guardar la variación
                 $variation_id = $variation->save();
                 
                 if ($variation_id) {
-                    // Save custom meta data for the variation
+                    // Guardar meta datos personalizados para la variación
                     \update_post_meta($variation_id, '_erp_variation_id', $combination['erp_id']);
                     $created_count++;
                     

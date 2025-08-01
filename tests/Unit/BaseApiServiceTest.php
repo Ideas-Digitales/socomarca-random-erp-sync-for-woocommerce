@@ -2,9 +2,6 @@
 
 use Socomarca\RandomERP\Services\BaseApiService;
 
-/**
- * Concrete implementation of BaseApiService for testing purposes
- */
 class TestableBaseApiService extends BaseApiService
 {
     public function getAuthTokenPublic()
@@ -39,7 +36,6 @@ class TestableBaseApiService extends BaseApiService
 }
 
 beforeEach(function () {
-    // Clean up WordPress options before each test
     delete_option('sm_api_url');
     delete_option('sm_api_user');
     delete_option('sm_api_password');
