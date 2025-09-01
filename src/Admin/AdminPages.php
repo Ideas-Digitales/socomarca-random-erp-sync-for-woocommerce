@@ -88,6 +88,7 @@ class AdminPages {
         $company_code = sanitize_text_field($_POST['sm_company_code'] ?? '');
         $company_rut = sanitize_text_field($_POST['sm_company_rut'] ?? '');
         $company_warehouse = sanitize_text_field($_POST['sm_company_warehouse'] ?? '');
+        $modalidad = sanitize_text_field($_POST['sm_modalidad'] ?? '');
         $product_type = sanitize_text_field($_POST['sm_product_type'] ?? 'auto');
         $invoice_on_completion = isset($_POST['sm_invoice_on_completion']) ? 1 : 0;
         $cron_enabled = isset($_POST['sm_cron_enabled']) ? 1 : 0;
@@ -100,6 +101,7 @@ class AdminPages {
         update_option('sm_company_code', $company_code);
         update_option('sm_company_rut', $company_rut);
         update_option('sm_company_warehouse', $company_warehouse);
+        update_option('sm_modalidad', $modalidad);
         update_option('sm_product_type', $product_type);
         update_option('sm_invoice_on_completion', $invoice_on_completion);
         update_option('sm_cron_enabled', $cron_enabled);
@@ -128,6 +130,7 @@ class AdminPages {
             'company_code' => get_option('sm_company_code', ''),
             'company_rut' => get_option('sm_company_rut', ''),
             'company_warehouse' => get_option('sm_company_warehouse', ''),
+            'modalidad' => get_option('sm_modalidad', ''),
             'product_type' => get_option('sm_product_type', 'auto'),
             'invoice_on_completion' => get_option('sm_invoice_on_completion', false),
             'cron_enabled' => get_option('sm_cron_enabled', false),
