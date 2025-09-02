@@ -82,9 +82,12 @@ class AdminPages {
     
     private function saveConfiguration() {
         
-        $api_url = sanitize_url($_POST['sm_api_url'] ?? '');
+        $operation_mode = sanitize_text_field($_POST['sm_operation_mode'] ?? 'development');
+        $dev_api_url = sanitize_url($_POST['sm_dev_api_url'] ?? '');
+        $prod_api_url = sanitize_url($_POST['sm_prod_api_url'] ?? '');
         $api_user = sanitize_email($_POST['sm_api_user'] ?? '');
         $api_password = sanitize_text_field($_POST['sm_api_password'] ?? '');
+        $production_token = sanitize_textarea_field($_POST['sm_production_token'] ?? '');
         $company_code = sanitize_text_field($_POST['sm_company_code'] ?? '');
         $company_rut = sanitize_text_field($_POST['sm_company_rut'] ?? '');
         $company_warehouse = sanitize_text_field($_POST['sm_company_warehouse'] ?? '');
@@ -95,9 +98,12 @@ class AdminPages {
         $cron_time = sanitize_text_field($_POST['sm_cron_time'] ?? '02:00');
         
         
-        update_option('sm_api_url', $api_url);
+        update_option('sm_operation_mode', $operation_mode);
+        update_option('sm_dev_api_url', $dev_api_url);
+        update_option('sm_prod_api_url', $prod_api_url);
         update_option('sm_api_user', $api_user);
         update_option('sm_api_password', $api_password);
+        update_option('sm_production_token', $production_token);
         update_option('sm_company_code', $company_code);
         update_option('sm_company_rut', $company_rut);
         update_option('sm_company_warehouse', $company_warehouse);
@@ -111,7 +117,7 @@ class AdminPages {
         $cronService = new \Socomarca\RandomERP\Services\CronSyncService();
         $cronService->scheduleCronJob();
         
-        
+        // Limpiar token automático al cambiar configuración
         delete_option('random_erp_token');
         
         
@@ -124,9 +130,12 @@ class AdminPages {
         $cronService = new \Socomarca\RandomERP\Services\CronSyncService();
         
         return [
-            'api_url' => get_option('sm_api_url', ''),
-            'api_user' => get_option('sm_api_user', ''),
-            'api_password' => get_option('sm_api_password', ''),
+            'operation_mode' => get_option('sm_operation_mode', 'development'),
+            'dev_api_url' => get_option('sm_dev_api_url', 'http://seguimiento.random.cl:3003'),
+            'prod_api_url' => get_option('sm_prod_api_url', ''),
+            'api_user' => get_option('sm_api_user', 'demo@random.cl'),
+            'api_password' => get_option('sm_api_password', 'd3m0r4nd0m3RP'),
+            'production_token' => get_option('sm_production_token', ''),
             'company_code' => get_option('sm_company_code', ''),
             'company_rut' => get_option('sm_company_rut', ''),
             'company_warehouse' => get_option('sm_company_warehouse', ''),
