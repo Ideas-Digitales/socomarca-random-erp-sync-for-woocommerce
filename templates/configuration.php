@@ -198,6 +198,14 @@
                     </tr>
                     <tr>
                         <th>
+                            Modalidad
+                        </th>
+                        <td>
+                            <input name="sm_modalidad" type="text" id="sm_modalidad" value="<?php echo esc_attr($modalidad); ?>" class="regular-text">
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
                             RUT empresa
                         </th>
                         <td>

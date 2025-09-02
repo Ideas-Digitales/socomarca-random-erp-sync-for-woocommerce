@@ -7,8 +7,9 @@ class EntityService extends BaseApiService {
     public function getEntities() {
         $company_code = get_option('sm_company_code', '01');
         $company_rut = get_option('sm_company_rut', '134549696');
+        $modalidad = get_option('sm_modalidad', 'SUC01');
         
-        $endpoint = "/web32/entidades?empresa={$company_code}&rut={$company_rut}";
+        $endpoint = "/web32/entidades?empresa={$company_code}&rut={$company_rut}&modalidad={$modalidad}";
         $entities = $this->makeApiRequest($endpoint);
         
         if ($entities !== false && is_array($entities)) {
