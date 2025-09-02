@@ -7,6 +7,7 @@ use Socomarca\RandomERP\Ajax\EntityAjaxHandler;
 use Socomarca\RandomERP\Ajax\CategoryAjaxHandler;
 use Socomarca\RandomERP\Ajax\ProductAjaxHandler;
 use Socomarca\RandomERP\Ajax\PriceListAjaxHandler;
+use Socomarca\RandomERP\Ajax\BrandAjaxHandler;
 use Socomarca\RandomERP\Ajax\CombinedAjaxHandler;
 use Socomarca\RandomERP\Ajax\CronSyncAjaxHandler;
 use Socomarca\RandomERP\Admin\AdminPages;
@@ -49,6 +50,7 @@ class Plugin {
         new CategoryAjaxHandler();
         new ProductAjaxHandler();
         new PriceListAjaxHandler();
+        new BrandAjaxHandler();
         new CombinedAjaxHandler();
         new CronSyncAjaxHandler();
         
@@ -108,9 +110,12 @@ class Plugin {
     
     private function setDefaultOptions() {
         
-        add_option('sm_api_url', 'http://seguimiento.random.cl:3003');
+        add_option('sm_operation_mode', 'development');
+        add_option('sm_dev_api_url', 'http://seguimiento.random.cl:3003');
+        add_option('sm_prod_api_url', '');
         add_option('sm_api_user', 'demo@random.cl');
         add_option('sm_api_password', 'd3m0r4nd0m3RP');
+        add_option('sm_production_token', '');
         add_option('sm_company_code', '01');
         add_option('sm_company_rut', '134549696');
     }

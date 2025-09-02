@@ -5,6 +5,7 @@
     <h2 class="nav-tab-wrapper">
         <a href="#tab-sync" class="nav-tab nav-tab-active" id="tab-sync-link">Sincronización</a>
         <a href="#tab-config" class="nav-tab" id="tab-config-link">Configuración</a>
+        <a href="#tab-admin" class="nav-tab" id="tab-admin-link">Administración</a>
     </h2>
     
     <div id="tab-sync" class="tab-content active">
@@ -58,6 +59,15 @@
                 </tr>
                 <tr>
                     <th>
+                        Marcas
+                    </th>
+                    <td class="sm_sync" data-action="sm_get_brands">
+                        <a class="button" href="#">Sincronizar marcas</a>
+                        <span class="sm_sync_result"></span>
+                    </td>
+                </tr>
+                <tr>
+                    <th>
                         Entidades
                     </th>
                     <td class="sm_sync" data-action="sm_get_entities">
@@ -76,77 +86,6 @@
                 </tr>
                 </tbody>
             </table>
-            <h2>Botones para reiniciar las pruebas</h2>
-            <p>Despues se van a borrar en producción.</p>
-            <table class="form-table">
-                <tbody>
-                <tr>
-                    <th>
-                        Eliminación Masiva Total
-                    </th>
-                    <td>
-                        <a class="button button-secondary" href="#" id="sm_delete_all_data" style="background-color: #dc3545; border-color: #dc3545; color: white; font-weight: bold;">
-                            🗑️ ELIMINAR TODO (Productos + Categorías + Usuarios)
-                        </a>
-                        <span id="sm_delete_all_data_result"></span>
-                        <span class="sm_delete_all_data_progress" style="display: none;">
-                            <div class="sm_sync_progress_bar">
-                                <span class="sm_sync_progress_bar_text">0/0</span>
-                                <div class="sm_sync_progress_bar_fill"></div>
-                            </div>
-                            <span class="sm_delete_status_report" style="margin-left: 10px; font-weight: bold; color: #0073aa;">
-                                [Productos: 0 | Categorías: 0 | Usuarios: 0]
-                            </span>
-                        </span>
-                        <p class="description" style="color: #d63384;">
-                            <strong>⚠️ MÁXIMO PELIGRO:</strong> Esta acción eliminará PERMANENTEMENTE todos los productos, categorías y usuarios (excepto administradores) de una sola vez. No se puede deshacer.
-                        </p>
-                    </td>
-                </tr>
-                <tr>
-                    <th>
-                        Gestión de Usuarios
-                    </th>
-                    <td>
-                        <a class="button button-secondary" href="#" id="sm_delete_all_users" style="background-color: #dc3545; border-color: #dc3545; color: white;">
-                            Eliminar todos los usuarios (excepto admin)
-                        </a>
-                        <span id="sm_delete_users_result"></span>
-                        <p class="description" style="color: #d63384;">
-                            <strong>⚠️ PELIGRO:</strong> Esta acción eliminará PERMANENTEMENTE todos los usuarios excepto administradores. No se puede deshacer.
-                        </p>
-                    </td>
-                </tr>
-                <tr>
-                    <th>
-                        Gestión de Categorías
-                    </th>
-                    <td>
-                        <a class="button button-secondary" href="#" id="sm_delete_all_categories" style="background-color: #dc3545; border-color: #dc3545; color: white;">
-                            Eliminar todas las categorías de WooCommerce
-                        </a>
-                        <span id="sm_delete_categories_result"></span>
-                        <p class="description" style="color: #d63384;">
-                            <strong>⚠️ PELIGRO:</strong> Esta acción eliminará PERMANENTEMENTE todas las categorías de productos. No se puede deshacer.
-                        </p>
-                    </td>
-                </tr>
-                <tr>
-                    <th>
-                        Gestión de Productos
-                    </th>
-                    <td>
-                        <a class="button button-secondary" href="#" id="sm_delete_all_products" style="background-color: #dc3545; border-color: #dc3545; color: white;">
-                            Eliminar todos los productos de WooCommerce
-                        </a>
-                        <span id="sm_delete_products_result"></span>
-                        <p class="description" style="color: #d63384;">
-                            <strong>⚠️ PELIGRO:</strong> Esta acción eliminará PERMANENTEMENTE todos los productos. No se puede deshacer.
-                        </p>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
     </div>
     
     <div id="tab-config" class="tab-content" style="display: none;">
@@ -157,33 +96,99 @@
                 <tbody>
                     <tr>
                         <th>
-                            URL API
+                            Modo de Operación
                         </th>
                         <td>
-                            <input name="sm_api_url" type="text" id="sm_api_url" value="<?php echo esc_attr($api_url); ?>" class="regular-text code" placeholder="http://hostname:port">
-                            <p class="description">URL base del API de Random ERP</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th>
-                            Usuario API
-                        </th>
-                        <td>
-                            <input name="sm_api_user" type="text" id="sm_api_user" value="<?php echo esc_attr($api_user); ?>" class="regular-text">
-                            <p class="description">Usuario para autenticación con Random ERP</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th>
-                            Contraseña API
-                        </th>
-                        <td>
-                            <input name="sm_api_password" type="password" id="sm_api_password" value="<?php echo esc_attr($api_password); ?>" class="regular-text">
-                            <p class="description">Contraseña para autenticación con Random ERP</p>
+                            <fieldset>
+                                <label>
+                                    <input type="radio" name="sm_operation_mode" value="development" <?php checked($operation_mode, 'development'); ?> />
+                                    Desarrollo - Generar token automáticamente con credenciales
+                                </label><br>
+                                <label>
+                                    <input type="radio" name="sm_operation_mode" value="production" <?php checked($operation_mode, 'production'); ?> />
+                                    Producción - Usar token manual
+                                </label>
+                            </fieldset>
+                            <p class="description">En modo desarrollo se generará el token automáticamente. En modo producción debes proporcionar un token válido.</p>
                         </td>
                     </tr>
                 </tbody>
             </table>
+            
+            <div id="development_fields" style="<?php echo ($operation_mode === 'production') ? 'display: none;' : ''; ?>">
+                <h4>Configuración para Desarrollo</h4>
+                <table class="form-table">
+                    <tbody>
+                        <tr>
+                            <th>
+                                URL API Desarrollo
+                            </th>
+                            <td>
+                                <input name="sm_dev_api_url" type="text" id="sm_dev_api_url" value="<?php echo esc_attr($dev_api_url); ?>" class="regular-text code" placeholder="http://dev-hostname:port">
+                                <p class="description">URL del API de Random ERP para desarrollo</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>
+                                Usuario API
+                            </th>
+                            <td>
+                                <input name="sm_api_user" type="text" id="sm_api_user" value="<?php echo esc_attr($api_user); ?>" class="regular-text">
+                                <p class="description">Usuario para autenticación con Random ERP</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>
+                                Contraseña API
+                            </th>
+                            <td>
+                                <input name="sm_api_password" type="password" id="sm_api_password" value="<?php echo esc_attr($api_password); ?>" class="regular-text">
+                                <p class="description">Contraseña para autenticación con Random ERP</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div id="production_fields" style="<?php echo ($operation_mode === 'development') ? 'display: none;' : ''; ?>">
+                <h4>Configuración para Producción</h4>
+                <table class="form-table">
+                    <tbody>
+                        <tr>
+                            <th>
+                                URL API Producción
+                            </th>
+                            <td>
+                                <input name="sm_prod_api_url" type="text" id="sm_prod_api_url" value="<?php echo esc_attr($prod_api_url); ?>" class="regular-text code" placeholder="http://prod-hostname:port">
+                                <p class="description">URL del API de Random ERP para producción</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>
+                                Token de Acceso
+                            </th>
+                            <td>
+                                <textarea name="sm_production_token" id="sm_production_token" rows="4" cols="50" class="large-text code" placeholder="Pegar aquí el token de producción..."><?php echo esc_textarea($production_token); ?></textarea>
+                                <p class="description">Token de acceso proporcionado para el entorno de producción. Este token debe ser válido y tener los permisos necesarios.</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <script type="text/javascript">
+                jQuery(document).ready(function($) {
+                    $('input[name="sm_operation_mode"]').change(function() {
+                        if ($(this).val() === 'development') {
+                            $('#development_fields').show();
+                            $('#production_fields').hide();
+                        } else {
+                            $('#development_fields').hide();
+                            $('#production_fields').show();
+                        }
+                    });
+                });
+            </script>
             
             <h2>Configuración empresa</h2>
             <table class="form-table">
@@ -339,5 +344,107 @@
             </table>
             <p class="submit"><input type="submit" name="submit" id="submit" class="button button-primary" value="Guardar cambios"></p>
         </form>
+    </div>
+    
+    <div id="tab-admin" class="tab-content" style="display: none;">
+        <h3>Herramientas de Administración</h3>
+        <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 15px; margin: 20px 0;">
+            <p style="margin: 0; color: #856404;"><strong>⚠️ ZONA DE PELIGRO:</strong> Las siguientes operaciones eliminarán datos de forma permanente. Úsalas con extrema precaución.</p>
+        </div>
+        
+        <h4>Eliminación Masiva Total</h4>
+        <table class="form-table">
+            <tbody>
+                <tr>
+                    <th>
+                        Eliminar Todo
+                    </th>
+                    <td>
+                        <a class="button button-secondary" href="#" id="sm_delete_all_data" style="background-color: #dc3545; border-color: #dc3545; color: white; font-weight: bold;">
+                            🗑️ ELIMINAR TODO (Productos + Categorías + Usuarios)
+                        </a>
+                        <span id="sm_delete_all_data_result"></span>
+                        <span class="sm_delete_all_data_progress" style="display: none;">
+                            <div class="sm_sync_progress_bar">
+                                <span class="sm_sync_progress_bar_text">0/0</span>
+                                <div class="sm_sync_progress_bar_fill"></div>
+                            </div>
+                            <span class="sm_delete_status_report" style="margin-left: 10px; font-weight: bold; color: #0073aa;">
+                                [Productos: 0 | Categorías: 0 | Usuarios: 0]
+                            </span>
+                        </span>
+                        <p class="description" style="color: #d63384;">
+                            <strong>⚠️ MÁXIMO PELIGRO:</strong> Esta acción eliminará PERMANENTEMENTE todos los productos, categorías y usuarios (excepto administradores) de una sola vez. No se puede deshacer.
+                        </p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <h4>Eliminación por Tipo de Datos</h4>
+        <table class="form-table">
+            <tbody>
+                <tr>
+                    <th>
+                        Gestión de Usuarios
+                    </th>
+                    <td>
+                        <a class="button button-secondary" href="#" id="sm_delete_all_users" style="background-color: #dc3545; border-color: #dc3545; color: white;">
+                            Eliminar todos los usuarios (excepto admin)
+                        </a>
+                        <span id="sm_delete_users_result"></span>
+                        <p class="description" style="color: #d63384;">
+                            <strong>⚠️ PELIGRO:</strong> Esta acción eliminará PERMANENTEMENTE todos los usuarios excepto administradores. No se puede deshacer.
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <th>
+                        Gestión de Categorías
+                    </th>
+                    <td>
+                        <a class="button button-secondary" href="#" id="sm_delete_all_categories" style="background-color: #dc3545; border-color: #dc3545; color: white;">
+                            Eliminar todas las categorías de WooCommerce
+                        </a>
+                        <span id="sm_delete_categories_result"></span>
+                        <p class="description" style="color: #d63384;">
+                            <strong>⚠️ PELIGRO:</strong> Esta acción eliminará PERMANENTEMENTE todas las categorías de productos. No se puede deshacer.
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <th>
+                        Gestión de Productos
+                    </th>
+                    <td>
+                        <a class="button button-secondary" href="#" id="sm_delete_all_products" style="background-color: #dc3545; border-color: #dc3545; color: white;">
+                            Eliminar todos los productos de WooCommerce
+                        </a>
+                        <span id="sm_delete_products_result"></span>
+                        <p class="description" style="color: #d63384;">
+                            <strong>⚠️ PELIGRO:</strong> Esta acción eliminará PERMANENTEMENTE todos los productos. No se puede deshacer.
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <th>
+                        Gestión de Marcas
+                    </th>
+                    <td>
+                        <a class="button button-secondary" href="#" id="sm_delete_all_brands" style="background-color: #dc3545; border-color: #dc3545; color: white;">
+                            Eliminar todas las marcas
+                        </a>
+                        <span id="sm_delete_brands_result"></span>
+                        <p class="description" style="color: #d63384;">
+                            <strong>⚠️ PELIGRO:</strong> Esta acción eliminará PERMANENTEMENTE todas las marcas. No se puede deshacer.
+                        </p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div style="background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 15px; margin: 20px 0;">
+            <p style="margin: 0; color: #6c757d; font-size: 0.9em;"><strong>Nota:</strong> Estas herramientas están destinadas para desarrollo y testing. En un entorno de producción, considera desactivar esta pestaña.</p>
+        </div>
     </div>
 </div>

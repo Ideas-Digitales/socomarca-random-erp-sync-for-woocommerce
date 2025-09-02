@@ -9,19 +9,46 @@ abstract class BaseApiService {
     protected $api_url;
     protected $api_user;
     protected $api_password;
+    protected $operation_mode;
+    protected $production_token;
     
     public function __construct() {
-        $this->api_url = get_option('sm_api_url', 'http://seguimiento.random.cl:3003');
+        $this->operation_mode = get_option('sm_operation_mode', 'development');
+        $this->production_token = get_option('sm_production_token', '');
+        
+        // Configurar URL según el modo
+        if ($this->operation_mode === 'production') {
+            $this->api_url = get_option('sm_prod_api_url', '');
+        } else {
+            $this->api_url = get_option('sm_dev_api_url', 'http://seguimiento.random.cl:3003');
+        }
+        
+        // Credenciales para modo desarrollo
         $this->api_user = get_option('sm_api_user', 'demo@random.cl');
         $this->api_password = get_option('sm_api_password', 'd3m0r4nd0m3RP');
     }
     
     protected function getAuthToken() {
-        $token = get_option('random_erp_token');
-        if (empty($token)) {
-            $token = $this->authenticate();
+        // Validar que la URL esté configurada
+        if (empty($this->api_url)) {
+            $mode_text = ($this->operation_mode === 'production') ? 'producción' : 'desarrollo';
+            throw new Exception("URL del API para modo {$mode_text} no configurada");
         }
-        return $token;
+        
+        if ($this->operation_mode === 'production') {
+            // En modo producción, usar el token manual
+            if (empty($this->production_token)) {
+                throw new Exception('Token de producción no configurado');
+            }
+            return $this->production_token;
+        } else {
+            // En modo desarrollo, generar token automáticamente
+            $token = get_option('random_erp_token');
+            if (empty($token)) {
+                $token = $this->authenticate();
+            }
+            return $token;
+        }
     }
     
     protected function authenticate() {
@@ -102,23 +129,29 @@ abstract class BaseApiService {
         }
         
         if ($status_code === 401) {
-            delete_option('random_erp_token');
-            $new_token = $this->authenticate();
-            if ($new_token) {
-                $args['headers']['Authorization'] = 'Bearer ' . $new_token;
-                $retry_response = wp_remote_request($url, $args);
-                
-                if (!is_wp_error($retry_response) && wp_remote_retrieve_response_code($retry_response) === 200) {
-                    $retry_body = json_decode(wp_remote_retrieve_body($retry_response), true);
+            // Solo intentar re-autenticación en modo desarrollo
+            if ($this->operation_mode === 'development') {
+                delete_option('random_erp_token');
+                $new_token = $this->authenticate();
+                if ($new_token) {
+                    $args['headers']['Authorization'] = 'Bearer ' . $new_token;
+                    $retry_response = wp_remote_request($url, $args);
                     
-                    if (isset($retry_body['data']) && is_array($retry_body['data'])) {
-                        return $retry_body['data'];
-                    }
-                    
-                    if (is_array($retry_body)) {
-                        return $retry_body;
+                    if (!is_wp_error($retry_response) && wp_remote_retrieve_response_code($retry_response) === 200) {
+                        $retry_body = json_decode(wp_remote_retrieve_body($retry_response), true);
+                        
+                        if (isset($retry_body['data']) && is_array($retry_body['data'])) {
+                            return $retry_body['data'];
+                        }
+                        
+                        if (is_array($retry_body)) {
+                            return $retry_body;
+                        }
                     }
                 }
+            } else {
+                // En modo producción, el token debe ser válido
+                throw new Exception('Token de producción no válido o expirado (401 Unauthorized)');
             }
         }
         

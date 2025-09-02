@@ -61,12 +61,23 @@ jQuery(document).ready(function($) {
                         
                         $this.find('.sm_sync_result').html('<span style="color: green;">' + message + ' (' + quantity + ' registros)</span>');
                         console.log('Listas de precios obtenidas:', response.data);
+                    }
+                    else if (action === 'sm_get_brands') {
+                        var message = response.data.message || 'Marcas sincronizadas';
+                        var stats = response.data.stats || {};
+                        var statsText = '';
+                        
+                        if (stats.created || stats.updated) {
+                            statsText = ' (' + (stats.created || 0) + ' creadas, ' + (stats.updated || 0) + ' actualizadas)';
+                        }
+                        
+                        $this.find('.sm_sync_result').html('<span style="color: green;">' + message + statsText + '</span>');
                     } 
                     else {
                         $this.find('.sm_sync_progress').css('display', 'inline-block');
-                        $this.find('.sm_sync_progress_bar_text').html('0/' + response.data.total);
+                        $this.find('.sm_sync_progress_bar_text').html('0/' + (response.data.total || 0));
                         
-                        if (response.data.total > 0) {
+                        if (response.data.total && response.data.total > 0) {
                             $this.find('.sm_sync_status_report').html('[0 creados / 0 actualizados]');
                             processBatchUsers($this, 0, response.data.total, 10);
                         } else {
@@ -416,6 +427,59 @@ jQuery(document).ready(function($) {
             error: function(xhr, status, error) {
                 console.error('Error AJAX eliminación productos:', xhr, status, error);
                 $button.removeClass('disabled').text('Eliminar todos los productos de WooCommerce');
+                $result.html('<span style="color: red;">✗ Error en la petición: ' + error + '</span>');
+            }
+        });
+    });
+    
+    // Manejar botón de eliminar marcas
+    $('#sm_delete_all_brands').click(function(e) {
+        e.preventDefault();
+        
+        // Confirmación doble para seguridad
+        var confirmation1 = confirm('⚠️ PELIGRO: ¿Estás seguro de que quieres ELIMINAR TODAS LAS MARCAS?\n\nEsta acción NO SE PUEDE DESHACER.');
+        
+        if (!confirmation1) {
+            return;
+        }
+        
+        var confirmation2 = prompt('Para confirmar, escribe exactamente: DELETE_ALL_BRANDS');
+        
+        if (confirmation2 !== 'DELETE_ALL_BRANDS') {
+            alert('Confirmación incorrecta. Operación cancelada.');
+            return;
+        }
+        
+        var $button = $(this);
+        var $result = $('#sm_delete_brands_result');
+        
+        $.ajax({
+            url: socomarca_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'sm_delete_all_brands',
+                confirm: 'DELETE_ALL_BRANDS'
+            },
+            beforeSend: function() {
+                $button.addClass('disabled').text('Eliminando marcas...');
+                $result.html('<div class="loader"></div>');
+            },
+            success: function(response) {
+                console.log('Respuesta eliminación marcas:', response);
+                $button.removeClass('disabled').text('Eliminar todas las marcas');
+                
+                if (response.success) {
+                    $result.html('<span style="color: green;">✓ ' + response.data.message + '</span>');
+                    if (response.data.errors && response.data.errors.length > 0) {
+                        $result.append('<br><span style="color: orange;">Errores: ' + response.data.errors.join(', ') + '</span>');
+                    }
+                } else {
+                    $result.html('<span style="color: red;">✗ Error: ' + response.data.message + '</span>');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error AJAX eliminación marcas:', xhr, status, error);
+                $button.removeClass('disabled').text('Eliminar todas las marcas');
                 $result.html('<span style="color: red;">✗ Error en la petición: ' + error + '</span>');
             }
         });

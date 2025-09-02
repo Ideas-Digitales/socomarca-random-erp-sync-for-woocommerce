@@ -3,3 +3,9 @@ CLAUDE.md
 .claude
 composer.lock
 logs/
+
+# Archivos de Postman
+*.postman_collection
+*.postman_collection.json
+*.postman_environment
+*.postman_environment.json
