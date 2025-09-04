@@ -16,7 +16,7 @@ describe('CategoryService - Integración con API Real', function () {
             // If API connection fails, test that it fails gracefully
             if ($result === false) {
                 expect($result)->toBeFalse();
-                error_log('⚠️  CategoryService: No se pudo conectar al API - usando credenciales demo');
+                error_log('WARNING CategoryService: No se pudo conectar al API - usando credenciales demo');
                 return;
             }
             
@@ -38,11 +38,14 @@ describe('CategoryService - Integración con API Real', function () {
         
         it('retorna false cuando hay error de conexión', function () {
             // Temporarily set invalid credentials
-            update_option('sm_api_url', 'http://invalid.url');
+            update_option('sm_api_url', 'http://invalid.url:9999');
+            update_option('sm_api_user', 'invalid_user');
+            update_option('sm_api_password', 'invalid_password');
             
             $service = new CategoryService();
             $result = $service->getCategories();
             
+            // Should return false due to connection failure
             expect($result)->toBeFalse();
             
             // Restore credentials
@@ -64,7 +67,6 @@ describe('CategoryService - Integración con API Real', function () {
                 expect($levels[1])->toBeGreaterThan(0);
                 
                 // Log levels found for debugging
-                //error_log('CategoryService Test: Niveles encontrados: ' . print_r($levels, true));
             }
         });
         
@@ -85,17 +87,17 @@ describe('CategoryService - Integración con API Real', function () {
                 expect($result['errors'])->toBeArray();
                 
                 // Log processing results
-                error_log('CategoryService Test: Procesamiento completado - ' . $result['message']);
             } else {
                 // If processing failed, log the reason
-                error_log('CategoryService Test: Error en procesamiento - ' . $result['message']);
                 expect($result['message'])->toBeString();
             }
         });
         
         it('maneja errores de API de manera elegante', function () {
             // Temporarily break the API connection
-            update_option('sm_api_url', 'http://invalid.url');
+            update_option('sm_api_url', 'http://invalid.url:9999');
+            update_option('sm_api_user', 'invalid_user');
+            update_option('sm_api_password', 'invalid_password');
             
             $service = new CategoryService();
             $result = $service->processCategories();
@@ -123,7 +125,6 @@ describe('CategoryService - Integración con API Real', function () {
                 expect($result['deleted_count'])->toBeInt();
                 expect($result['errors'])->toBeArray();
                 
-                error_log('CategoryService Test: Eliminación completada - ' . $result['message']);
             }
         });
         
@@ -196,9 +197,6 @@ describe('CategoryService - Integración con API Real', function () {
                     }
                 }
                 
-                error_log("CategoryService Test: Jerarquía - Nivel 1: " . count($level1Categories) . 
-                         ", Nivel 2: " . count($level2Categories) . 
-                         ", Nivel 3: " . count($level3Categories));
             }
         });
         
@@ -218,7 +216,6 @@ describe('CategoryService - Integración con API Real', function () {
             expect($executionTime)->toBeLessThan(30);
             
             if ($result) {
-                error_log("CategoryService Test: Tiempo de ejecución: {$executionTime}s para {$result['quantity']} categorías");
             }
         });
         
@@ -233,7 +230,6 @@ describe('CategoryService - Integración con API Real', function () {
             // Memory usage should be reasonable (less than 50MB)
             expect($memoryUsed)->toBeLessThan(50 * 1024 * 1024);
             
-            error_log("CategoryService Test: Memoria utilizada: " . round($memoryUsed / 1024 / 1024, 2) . "MB");
         });
         
     });

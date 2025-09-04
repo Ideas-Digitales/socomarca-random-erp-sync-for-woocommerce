@@ -168,7 +168,26 @@
                                 Token de Acceso
                             </th>
                             <td>
-                                <textarea name="sm_production_token" id="sm_production_token" rows="4" cols="50" class="large-text code" placeholder="Pegar aquí el token de producción..."><?php echo esc_textarea($production_token); ?></textarea>
+                                <?php if (!empty($production_token)): ?>
+                                    <div id="token_display_section">
+                                        <div style="background-color: #f0f0f1; padding: 10px; border-radius: 4px; margin-bottom: 10px;">
+                                            <code style="font-family: monospace; color: #666;">
+                                                <?php echo esc_html(substr($production_token, 0, 20) . '...' . substr($production_token, -10)); ?>
+                                            </code>
+                                            <span style="color: #46b450; margin-left: 10px;">✓ Token configurado</span>
+                                        </div>
+                                        <button type="button" id="clear_production_token" class="button button-secondary" style="background-color: #dc3545; border-color: #dc3545; color: white;">
+                                            Limpiar Token
+                                        </button>
+                                    </div>
+                                    <div id="token_input_section" style="display: none;">
+                                        <textarea name="sm_production_token" id="sm_production_token" rows="4" cols="50" class="large-text code" placeholder="Pegar aquí el token de producción..."></textarea>
+                                    </div>
+                                <?php else: ?>
+                                    <div id="token_input_section">
+                                        <textarea name="sm_production_token" id="sm_production_token" rows="4" cols="50" class="large-text code" placeholder="Pegar aquí el token de producción..."></textarea>
+                                    </div>
+                                <?php endif; ?>
                                 <p class="description">Token de acceso proporcionado para el entorno de producción. Este token debe ser válido y tener los permisos necesarios.</p>
                             </td>
                         </tr>
@@ -185,6 +204,32 @@
                         } else {
                             $('#development_fields').hide();
                             $('#production_fields').show();
+                        }
+                    });
+
+                    $('#clear_production_token').click(function(e) {
+                        e.preventDefault();
+                        if (confirm('¿Estás seguro de que deseas limpiar el token de producción? Esta acción no se puede deshacer.')) {
+                            $.ajax({
+                                url: ajaxurl,
+                                type: 'POST',
+                                data: {
+                                    action: 'sm_clear_production_token',
+                                    nonce: '<?php echo wp_create_nonce('sm_clear_token'); ?>'
+                                },
+                                success: function(response) {
+                                    if (response.success) {
+                                        $('#token_display_section').hide();
+                                        $('#token_input_section').show().find('textarea').val('').prop('name', 'sm_production_token');
+                                        alert('Token limpiado correctamente. Guarda los cambios para confirmar.');
+                                    } else {
+                                        alert('Error al limpiar el token: ' + (response.data || 'Error desconocido'));
+                                    }
+                                },
+                                error: function() {
+                                    alert('Error de comunicación con el servidor.');
+                                }
+                            });
                         }
                     });
                 });
@@ -257,7 +302,7 @@
                                 </label>
                             </fieldset>
                             <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 10px; margin: 10px 0;">
-                                <strong>⚠️ CONFIGURACIÓN FORZADA:</strong> Todos los productos se crean como <strong>productos variables</strong> con variación "Unidad" = "UN"
+                                <strong>CONFIGURACIÓN FORZADA:</strong> Todos los productos se crean como <strong>productos variables</strong> con variación "Unidad" = "UN"
                             </div>
                             <p class="description" style="opacity: 0.6;">
                                 <em>Configuración anterior (deshabilitada):</em><br>
@@ -303,10 +348,10 @@
                             $next_scheduled = wp_next_scheduled('sm_erp_auto_sync');
                             if ($next_scheduled): 
                             ?>
-                                <span style="color: #46b450;">✅ Activo</span>
+                                <span style="color: #46b450;">Activo</span>
                                 <p class="description">Próxima ejecución: <?php echo date('Y-m-d H:i:s', $next_scheduled); ?></p>
                             <?php else: ?>
-                                <span style="color: #dc3232;">❌ Inactivo</span>
+                                <span style="color: #dc3232;">Inactivo</span>
                                 <p class="description">La sincronización automática no está programada</p>
                             <?php endif; ?>
                         </td>
@@ -320,9 +365,9 @@
                             <strong>Fecha:</strong> <?php echo date('Y-m-d H:i:s', $last_sync['timestamp']); ?><br>
                             <strong>Estado:</strong> 
                             <?php if ($last_sync['status'] === 'success'): ?>
-                                <span style="color: #46b450;">✅ Exitosa</span>
+                                <span style="color: #46b450;">Exitosa</span>
                             <?php else: ?>
-                                <span style="color: #dc3232;">❌ Error</span>
+                                <span style="color: #dc3232;">Error</span>
                             <?php endif; ?>
                             <br>
                             <strong>Tiempo de ejecución:</strong> <?php echo $last_sync['execution_time']; ?> segundos<br>
@@ -348,6 +393,27 @@
                             <p class="description">Ejecuta manualmente la sincronización completa en el orden correcto</p>
                         </td>
                     </tr>
+                    <tr>
+                        <th>
+                            Modo debug
+                        </th>
+                        <td>
+                            <label>
+                                <input name="sm_debug_enabled" type="checkbox" id="sm_debug_enabled" value="1" <?php checked($debug_enabled, true); ?> />
+                                Activar modo debug
+                            </label>
+                            <p class="description">
+                                Activa el logging detallado para debugging (error_reporting = E_ALL). 
+                                <strong>Advertencia:</strong> Solo usar en desarrollo, puede impactar el rendimiento.
+                            </p>
+                            <?php if ($debug_enabled): ?>
+                                <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 10px; margin: 10px 0;">
+                                    <strong>Modo debug activo</strong><br>
+                                    Los logs detallados están habilitados. Desactiva esta opción en producción.
+                                </div>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
                 </tbody>
             </table>
             <p class="submit"><input type="submit" name="submit" id="submit" class="button button-primary" value="Guardar cambios"></p>
@@ -357,7 +423,7 @@
     <div id="tab-admin" class="tab-content" style="display: none;">
         <h3>Herramientas de Administración</h3>
         <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 15px; margin: 20px 0;">
-            <p style="margin: 0; color: #856404;"><strong>⚠️ ZONA DE PELIGRO:</strong> Las siguientes operaciones eliminarán datos de forma permanente. Úsalas con extrema precaución.</p>
+            <p style="margin: 0; color: #856404;"><strong>ZONA DE PELIGRO:</strong> Las siguientes operaciones eliminarán datos de forma permanente. Úsalas con extrema precaución.</p>
         </div>
         
         <h4>Eliminación Masiva Total</h4>
@@ -369,7 +435,7 @@
                     </th>
                     <td>
                         <a class="button button-secondary" href="#" id="sm_delete_all_data" style="background-color: #dc3545; border-color: #dc3545; color: white; font-weight: bold;">
-                            🗑️ ELIMINAR TODO (Productos + Categorías + Usuarios)
+                            ELIMINAR TODO (Productos + Categorías + Usuarios)
                         </a>
                         <span id="sm_delete_all_data_result"></span>
                         <span class="sm_delete_all_data_progress" style="display: none;">
@@ -382,14 +448,13 @@
                             </span>
                         </span>
                         <p class="description" style="color: #d63384;">
-                            <strong>⚠️ MÁXIMO PELIGRO:</strong> Esta acción eliminará PERMANENTEMENTE todos los productos, categorías y usuarios (excepto administradores) de una sola vez. No se puede deshacer.
+                            <strong>MÁXIMO PELIGRO:</strong> Esta acción eliminará PERMANENTEMENTE todos los productos, categorías y usuarios (excepto administradores) de una sola vez. No se puede deshacer.
                         </p>
                     </td>
                 </tr>
             </tbody>
         </table>
-        
-        <h4>Eliminación por Tipo de Datos</h4>
+    
         <table class="form-table">
             <tbody>
                 <tr>
@@ -402,7 +467,7 @@
                         </a>
                         <span id="sm_delete_users_result"></span>
                         <p class="description" style="color: #d63384;">
-                            <strong>⚠️ PELIGRO:</strong> Esta acción eliminará PERMANENTEMENTE todos los usuarios excepto administradores. No se puede deshacer.
+                            <strong>PELIGRO:</strong> Esta acción eliminará PERMANENTEMENTE todos los usuarios excepto administradores. No se puede deshacer.
                         </p>
                     </td>
                 </tr>
@@ -416,7 +481,7 @@
                         </a>
                         <span id="sm_delete_categories_result"></span>
                         <p class="description" style="color: #d63384;">
-                            <strong>⚠️ PELIGRO:</strong> Esta acción eliminará PERMANENTEMENTE todas las categorías de productos. No se puede deshacer.
+                            <strong>PELIGRO:</strong> Esta acción eliminará PERMANENTEMENTE todas las categorías de productos. No se puede deshacer.
                         </p>
                     </td>
                 </tr>
@@ -430,7 +495,7 @@
                         </a>
                         <span id="sm_delete_products_result"></span>
                         <p class="description" style="color: #d63384;">
-                            <strong>⚠️ PELIGRO:</strong> Esta acción eliminará PERMANENTEMENTE todos los productos. No se puede deshacer.
+                            <strong>PELIGRO:</strong> Esta acción eliminará PERMANENTEMENTE todos los productos. No se puede deshacer.
                         </p>
                     </td>
                 </tr>
@@ -444,15 +509,12 @@
                         </a>
                         <span id="sm_delete_brands_result"></span>
                         <p class="description" style="color: #d63384;">
-                            <strong>⚠️ PELIGRO:</strong> Esta acción eliminará PERMANENTEMENTE todas las marcas. No se puede deshacer.
+                            <strong>PELIGRO:</strong> Esta acción eliminará PERMANENTEMENTE todas las marcas. No se puede deshacer.
                         </p>
                     </td>
                 </tr>
             </tbody>
         </table>
-        
-        <div style="background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 15px; margin: 20px 0;">
-            <p style="margin: 0; color: #6c757d; font-size: 0.9em;"><strong>Nota:</strong> Estas herramientas están destinadas para desarrollo y testing. En un entorno de producción, considera desactivar esta pestaña.</p>
-        </div>
+    
     </div>
 </div>

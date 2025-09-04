@@ -4,21 +4,48 @@ namespace Socomarca\RandomERP\Services;
 
 class EntityService extends BaseApiService {
     
+    private $log_file;
+    
+    public function __construct() {
+        parent::__construct();
+        $logs_dir = SOCOMARCA_ERP_PLUGIN_DIR . 'logs';
+        if (!file_exists($logs_dir)) {
+            wp_mkdir_p($logs_dir);
+        }
+        $this->log_file = $logs_dir . '/entities.log';
+    }
+    
+    protected function log($message) {
+        $timestamp = date('Y-m-d H:i:s');
+        $log_entry = "[$timestamp] EntityService: $message" . PHP_EOL;
+        file_put_contents($this->log_file, $log_entry, FILE_APPEND | LOCK_EX);
+    }
+    
     public function getEntities() {
         $company_code = get_option('sm_company_code', '01');
         $company_rut = get_option('sm_company_rut', '134549696');
         $modalidad = get_option('sm_modalidad', 'SUC01');
         
         $endpoint = "/web32/entidades?empresa={$company_code}&rut={$company_rut}&modalidad={$modalidad}";
+        
+        $this->log('Iniciando obtención de entidades');
+        $this->log("Configuración: Company Code: {$company_code}, RUT: {$company_rut}, Modalidad: {$modalidad}");
+        $this->log("Endpoint: {$endpoint}");
+        $this->log("URL Base API: {$this->api_url}");
+        $this->log("URL Completa: {$this->api_url}{$endpoint}");
+        
         $entities = $this->makeApiRequest($endpoint);
         
         if ($entities !== false && is_array($entities)) {
+            $count = count($entities);
+            $this->log("Entidades obtenidas exitosamente: {$count}");
             return [
-                'quantity' => count($entities),
+                'quantity' => $count,
                 'items' => $entities
             ];
         }
         
+        $this->log("Error al obtener entidades - makeApiRequest retornó: " . json_encode($entities));
         return false;
     }
     

@@ -16,7 +16,7 @@ describe('ProductService - Integración con API Real', function () {
             // If API connection fails, test that it fails gracefully
             if ($result === false) {
                 expect($result)->toBeFalse();
-                error_log('⚠️  ProductService: No se pudo conectar al API - usando credenciales demo');
+                error_log('WARNING ProductService: No se pudo conectar al API - usando credenciales demo');
                 return;
             }
             
@@ -37,13 +37,14 @@ describe('ProductService - Integración con API Real', function () {
                 expect($firstProduct['KOPR'])->toBeString();
                 expect($firstProduct['NOKOPR'])->toBeString();
                 
-                error_log('ProductService Test: Primer producto - SKU: ' . $firstProduct['KOPR'] . ', Nombre: ' . $firstProduct['NOKOPR']);
             }
         });
         
         it('retorna false cuando hay error de conexión', function () {
             // Temporarily set invalid API URL
-            update_option('sm_api_url', 'http://invalid.url');
+            update_option('sm_api_url', 'http://invalid.url:9999');
+            update_option('sm_api_user', 'invalid_user');
+            update_option('sm_api_password', 'invalid_password');
             
             $service = new ProductService();
             $result = $service->getProducts();
@@ -66,7 +67,6 @@ describe('ProductService - Integración con API Real', function () {
             expect($executionTime)->toBeLessThan(60); // 60 seconds max for products
             
             if ($result) {
-                error_log("ProductService Test: {$result['quantity']} productos obtenidos en {$executionTime}s");
             }
         });
         
@@ -90,15 +90,15 @@ describe('ProductService - Integración con API Real', function () {
                 expect($cached_products)->toBeArray();
                 expect(count($cached_products))->toBe($result['total']);
                 
-                error_log('ProductService Test: Procesados ' . $result['total'] . ' productos');
             } else {
-                error_log('ProductService Test: Error en procesamiento - ' . $result['message']);
             }
         });
         
         it('maneja errores de API de manera elegante', function () {
             // Break API connection
-            update_option('sm_api_url', 'http://invalid.url');
+            update_option('sm_api_url', 'http://invalid.url:9999');
+            update_option('sm_api_user', 'invalid_user');
+            update_option('sm_api_password', 'invalid_password');
             
             $service = new ProductService();
             $result = $service->processProducts();
@@ -173,12 +173,8 @@ describe('ProductService - Integración con API Real', function () {
                 // Most SKUs should be valid
                 expect($validSkuCount)->toBeGreaterThan(0);
                 
-                error_log("ProductService Test: SKUs válidos: $validSkuCount de {$result['quantity']}");
                 
                 
-                if (!empty($invalidSkus)) {
-                    error_log('ProductService Test: SKUs inválidos: ' . implode(', ', array_slice($invalidSkus, 0, 3)));
-                }
             }
         });
         
@@ -205,9 +201,6 @@ describe('ProductService - Integración con API Real', function () {
             
             if ($result) {
                 $avgMemoryPerProduct = $memoryUsed / $result['quantity'];
-                error_log("ProductService Test: Rendimiento - {$result['quantity']} productos en {$executionTime}s, " . 
-                         round($memoryUsed / 1024 / 1024, 2) . "MB total, " . 
-                         round($avgMemoryPerProduct / 1024, 2) . "KB por producto");
             }
         });
         
@@ -227,7 +220,6 @@ describe('ProductService - Integración con API Real', function () {
                 // Verify cache integrity
                 expect(count($cached_products))->toBeGreaterThan(0);
                 
-                error_log('ProductService Test: Cache contiene ' . count($cached_products) . ' productos');
             }
         });
         

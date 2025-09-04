@@ -148,6 +148,22 @@ if (!class_exists('MockWCOrder')) {
             }
             $mock_order_notes[$this->order_id][] = $note;
         }
+        
+        public function update_meta_data($key, $value)
+        {
+            $this->data['meta'][$key] = $value;
+        }
+        
+        public function save()
+        {
+            // Mock save method
+            return true;
+        }
+        
+        public function get_meta($key, $single = true)
+        {
+            return isset($this->data['meta'][$key]) ? $this->data['meta'][$key] : '';
+        }
     }
 }
 

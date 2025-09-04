@@ -63,15 +63,15 @@ composer test:fast
 
 Los tests unitarios del DocumentService incluyen:
 
-- ✅ **Instanciación básica** del servicio
-- ✅ **Creación de archivos de log** automática
-- ✅ **Procesamiento de órdenes** con datos válidos
-- ✅ **Manejo de órdenes faltantes** de forma elegante
-- ✅ **Códigos de entidad por defecto** cuando el usuario no tiene uno
-- ✅ **Validación de items** (ignora productos sin SKU)
-- ✅ **Procesamiento de variaciones** de productos (maneja `PRODUCTO|001` → `PRODUCTO`)
-- ✅ **Manejo detallado de errores** de API con logging completo
-- ✅ **Notas privadas de orden** que replican los logs
+- **Instanciación básica** del servicio
+- **Creación de archivos de log** automática
+- **Procesamiento de órdenes** con datos válidos
+- **Manejo de órdenes faltantes** de forma elegante
+- **Códigos de entidad por defecto** cuando el usuario no tiene uno
+- **Validación de items** (ignora productos sin SKU)
+- **Procesamiento de variaciones** de productos (maneja `PRODUCTO|001` → `PRODUCTO`)
+- **Manejo detallado de errores** de API con logging completo
+- **Notas privadas de orden** que replican los logs
 
 ### Características Probadas
 
@@ -125,7 +125,7 @@ Proporciona mocks específicos para HTTP requests:
 ## Solución de Problemas
 
 ### Error "Cannot redeclare function"
-✅ **Solucionado**: Las funciones mock ahora están centralizadas en archivos separados para evitar redeclaraciones.
+**Solucionado**: Las funciones mock ahora están centralizadas en archivos separados para evitar redeclaraciones.
 
 ### Tests de Integración Timeout
 Los tests de integración pueden tomar tiempo debido a llamadas reales al API. Use `composer test:unit` para desarrollo rápido.

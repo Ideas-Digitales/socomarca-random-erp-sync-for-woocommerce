@@ -10,6 +10,7 @@ use Socomarca\RandomERP\Ajax\PriceListAjaxHandler;
 use Socomarca\RandomERP\Ajax\BrandAjaxHandler;
 use Socomarca\RandomERP\Ajax\CombinedAjaxHandler;
 use Socomarca\RandomERP\Ajax\CronSyncAjaxHandler;
+use Socomarca\RandomERP\Ajax\InvoiceDownloadAjaxHandler;
 use Socomarca\RandomERP\Admin\AdminPages;
 use Socomarca\RandomERP\Services\DocumentService;
 use Socomarca\RandomERP\Services\CronSyncService;
@@ -53,6 +54,7 @@ class Plugin {
         new BrandAjaxHandler();
         new CombinedAjaxHandler();
         new CronSyncAjaxHandler();
+        new InvoiceDownloadAjaxHandler();
         
         // Inicializar el servicio de cron
         $cronService = new CronSyncService();
