@@ -74,7 +74,7 @@ class DocumentService extends BaseApiService {
                 'datos' => [
                     'empresa' => $company_code,
                     'codigoEntidad' => $entity_code,
-                    'tido' => 'BLV',
+                    'tido' => 'NVV',
                     'modalidad' => 'WEB',
                     'lineas' => $lines
                 ]
@@ -83,7 +83,16 @@ class DocumentService extends BaseApiService {
             $result = $this->create_document($document_data);
             
             if ($result) {
-                $order->add_order_note('Factura creada en Random ERP exitosamente');
+                // Extraer idmaeedo de la respuesta y guardarlo en la orden
+                $idmaeedo = $this->extractIdMaeedoFromResponse($result);
+                if ($idmaeedo) {
+                    $order->update_meta_data('_random_erp_idmaeedo', $idmaeedo);
+                    $order->save();
+                    $this->log("Saved idmaeedo: $idmaeedo for order: $order_id");
+                    $order->add_order_note("Factura creada en Random ERP exitosamente (ID: $idmaeedo)");
+                } else {
+                    $order->add_order_note('Factura creada en Random ERP exitosamente');
+                }
                 $this->log("Invoice created successfully for order: $order_id");
             } else {
                 $order->add_order_note('Error al crear factura en Random ERP');
@@ -145,6 +154,36 @@ class DocumentService extends BaseApiService {
         return $lines;
     }
     
+    private function extractIdMaeedoFromResponse($response) {
+        // La respuesta puede venir en diferentes formatos
+        if (is_array($response)) {
+            // Si la respuesta tiene estructura anidada como { "datos": { "idmaeedo": ... } }
+            if (isset($response['datos']['idmaeedo'])) {
+                return $response['datos']['idmaeedo'];
+            }
+            // Si la respuesta es directa como { "idmaeedo": ... }
+            if (isset($response['idmaeedo'])) {
+                return $response['idmaeedo'];
+            }
+        }
+        
+        // Si la respuesta es un string JSON, intentar decodificarla
+        if (is_string($response)) {
+            $decoded = json_decode($response, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                if (isset($decoded['datos']['idmaeedo'])) {
+                    return $decoded['datos']['idmaeedo'];
+                }
+                if (isset($decoded['idmaeedo'])) {
+                    return $decoded['idmaeedo'];
+                }
+            }
+        }
+        
+        $this->log("Could not extract idmaeedo from response: " . json_encode($response));
+        return null;
+    }
+
     public function create_document($document_data) {
         try {
             $this->log("Sending document to Random ERP API");
@@ -166,7 +205,28 @@ class DocumentService extends BaseApiService {
         }
     }
     
-    private function makeApiRequestWithDetails($endpoint, $method = 'GET', $data = null) {
+    public function downloadInvoicePdf($idmaeedo) {
+        try {
+            $this->log("Downloading PDF for idmaeedo: $idmaeedo");
+            
+            $endpoint = "/documentos/render?idmaeedo=" . urlencode($idmaeedo) . "&output=pdf";
+            $result = $this->makeApiRequestWithDetails($endpoint, 'GET', null, true);
+            
+            if ($result !== false) {
+                $this->log("PDF downloaded successfully for idmaeedo: $idmaeedo");
+                return $result;
+            }
+            
+            $this->log("PDF download failed for idmaeedo: $idmaeedo");
+            return false;
+            
+        } catch (Exception $e) {
+            $this->log("PDF download error for idmaeedo $idmaeedo: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    private function makeApiRequestWithDetails($endpoint, $method = 'GET', $data = null, $is_pdf_download = false) {
         $token = $this->getAuthToken();
         if (!$token) {
             $this->log("No auth token available");
@@ -209,6 +269,11 @@ class DocumentService extends BaseApiService {
         
         // Códigos de estado exitosos para creación de documentos (200, 201)
         if ($status_code === 200 || $status_code === 201) {
+            // Para descargas de PDF, devolver el contenido binario directamente
+            if ($is_pdf_download) {
+                return $body_raw;
+            }
+            
             $body = json_decode($body_raw, true);
             
             if (isset($body['data']) && is_array($body['data'])) {
@@ -244,6 +309,11 @@ class DocumentService extends BaseApiService {
                     $this->log("Retry response body: " . $retry_body_raw);
                     
                     if ($retry_status === 200) {
+                        // Para descargas de PDF en el retry, devolver contenido binario directamente
+                        if ($is_pdf_download) {
+                            return $retry_body_raw;
+                        }
+                        
                         $retry_body = json_decode($retry_body_raw, true);
                         
                         if (isset($retry_body['data']) && is_array($retry_body['data'])) {

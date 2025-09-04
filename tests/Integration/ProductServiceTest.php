@@ -16,7 +16,7 @@ describe('ProductService - Integración con API Real', function () {
             // If API connection fails, test that it fails gracefully
             if ($result === false) {
                 expect($result)->toBeFalse();
-                error_log('⚠️  ProductService: No se pudo conectar al API - usando credenciales demo');
+                error_log('WARNING ProductService: No se pudo conectar al API - usando credenciales demo');
                 return;
             }
             
@@ -43,7 +43,9 @@ describe('ProductService - Integración con API Real', function () {
         
         it('retorna false cuando hay error de conexión', function () {
             // Temporarily set invalid API URL
-            update_option('sm_api_url', 'http://invalid.url');
+            update_option('sm_api_url', 'http://invalid.url:9999');
+            update_option('sm_api_user', 'invalid_user');
+            update_option('sm_api_password', 'invalid_password');
             
             $service = new ProductService();
             $result = $service->getProducts();
@@ -98,7 +100,9 @@ describe('ProductService - Integración con API Real', function () {
         
         it('maneja errores de API de manera elegante', function () {
             // Break API connection
-            update_option('sm_api_url', 'http://invalid.url');
+            update_option('sm_api_url', 'http://invalid.url:9999');
+            update_option('sm_api_user', 'invalid_user');
+            update_option('sm_api_password', 'invalid_password');
             
             $service = new ProductService();
             $result = $service->processProducts();

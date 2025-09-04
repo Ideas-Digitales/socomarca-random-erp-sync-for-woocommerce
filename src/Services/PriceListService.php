@@ -42,9 +42,27 @@ class PriceListService extends BaseApiService {
                         //Agrega meta a producto segun b2b king: https://woocommerce-b2b-plugin.com/docs/b2bking-tiered-pricing-setup-auto-generated-tiered-pricing-table/#2-toc-title
                         $meta_name = "b2bking_product_pricetiers_group_".$post_id;
 
-                        // Recopilar todas las unidades del producto
+                        $principal_unit = $data['venderen']; // Unidad principal publicada; 1=primera, 2=segunda, 0=ambas
+                        
+                        // Filtrar unidades según venderen
+                        $filtered_unidades = [];
+                        foreach ($data['unidades'] as $index => $unidad) {
+                            // 1=primera,
+                            if ($principal_unit == 1 && $index != 0) {
+                                continue; 
+                            }
+                            // 2=segunda
+                            if ($principal_unit == 2 && $index != 1) {
+                                continue;
+                            }
+                            // 0=ambas - no filtrar
+                            
+                            $filtered_unidades[] = $unidad;
+                        }
+
+                        // Recopilar nombres de las unidades filtradas
                         $unidades_nombres = [];
-                        foreach ($data['unidades'] as $unidad) {
+                        foreach ($filtered_unidades as $unidad) {
                             $unidades_nombres[] = $unidad['nombre'];
                         }
 
@@ -70,7 +88,7 @@ class PriceListService extends BaseApiService {
                             
                             // Encontrar la unidad que corresponde a esta variación
                             $matching_unidad = null;
-                            foreach ($data['unidades'] as $unidad) {
+                            foreach ($filtered_unidades as $unidad) {
                                 // Comparar el nombre de la unidad con los atributos de la variación
                                 foreach ($variation['attributes'] as $attribute) {
                                     foreach ($attribute as $attribute_name => $attribute_value) {

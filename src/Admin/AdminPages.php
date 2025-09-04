@@ -2,6 +2,8 @@
 
 namespace Socomarca\RandomERP\Admin;
 
+use Automattic\WooCommerce\Internal\DataStores\Orders\CustomOrdersTableController;
+
 class AdminPages {
     
     public function __construct() {
@@ -11,6 +13,8 @@ class AdminPages {
     private function registerHooks() {
         add_action('admin_menu', [$this, 'addMenuPages']);
         add_action('admin_enqueue_scripts', [$this, 'enqueueAssets']);
+        add_action('add_meta_boxes', [$this, 'addInvoiceViewMetaBox']);
+        add_action('wp_ajax_sm_clear_production_token', [$this, 'clearProductionToken']);
         error_log('Socomarca ERP: AdminPages hooks registrados');
     }
     
@@ -31,12 +35,27 @@ class AdminPages {
     }
     
     public function enqueueAssets($hook) {
+        $plugin_url = SOCOMARCA_ERP_PLUGIN_URL;
+        
+        // Enqueue invoice download script for order pages
+        if (get_post_type() === 'shop_order') {
+            wp_enqueue_script(
+                'sm-invoice-download',
+                $plugin_url . 'assets/js/invoice-download.js',
+                ['jquery'],
+                '1.0.0',
+                true
+            );
+            
+            wp_localize_script('sm-invoice-download', 'smInvoiceDownloadData', [
+                'nonce' => wp_create_nonce('sm_download_invoice'),
+                'ajaxurl' => admin_url('admin-ajax.php')
+            ]);
+        }
         
         if ($hook !== 'toplevel_page_socomarca') {
             return;
         }
-        
-        $plugin_url = SOCOMARCA_ERP_PLUGIN_URL;
         
         wp_enqueue_style(
             'socomarca-admin-css',
@@ -96,6 +115,7 @@ class AdminPages {
         $invoice_on_completion = isset($_POST['sm_invoice_on_completion']) ? 1 : 0;
         $cron_enabled = isset($_POST['sm_cron_enabled']) ? 1 : 0;
         $cron_time = sanitize_text_field($_POST['sm_cron_time'] ?? '02:00');
+        $debug_enabled = isset($_POST['sm_debug_enabled']) ? 1 : 0;
         
         
         update_option('sm_operation_mode', $operation_mode);
@@ -112,6 +132,7 @@ class AdminPages {
         update_option('sm_invoice_on_completion', $invoice_on_completion);
         update_option('sm_cron_enabled', $cron_enabled);
         update_option('sm_cron_time', $cron_time);
+        update_option('sm_debug_enabled', $debug_enabled);
         
         // Reconfigurar el cron job
         $cronService = new \Socomarca\RandomERP\Services\CronSyncService();
@@ -144,7 +165,63 @@ class AdminPages {
             'invoice_on_completion' => get_option('sm_invoice_on_completion', false),
             'cron_enabled' => get_option('sm_cron_enabled', false),
             'cron_time' => get_option('sm_cron_time', '02:00'),
+            'debug_enabled' => get_option('sm_debug_enabled', false),
             'last_sync' => $cronService->getLastSyncInfo()
         ];
+    }
+
+    public function addInvoiceViewMetaBox() {
+        $screen = class_exists('\Automattic\WooCommerce\Internal\DataStores\Orders\CustomOrdersTableController') && wc_get_container()->get(CustomOrdersTableController::class)->custom_orders_table_usage_is_enabled()
+            ? wc_get_page_screen_id('shop-order')
+            : 'shop_order';
+
+        add_meta_box(
+            'sm_invoice_view',
+            __('Random ERP - Factura'),
+            [$this, 'renderInvoiceViewMetaBox'],
+            $screen,
+            'side',
+            'high'
+        );
+    }
+
+    public function renderInvoiceViewMetaBox($object) {
+        // Get the WC_Order object
+        $order = is_a($object, 'WP_Post') ? wc_get_order($object->ID) : $object;
+        
+        if (!$order) {
+            echo '<p>' . __('No se pudo cargar la orden.') . '</p>';
+            return;
+        }
+
+        // Get the Random ERP document ID
+        $idmaeedo = $order->get_meta('_random_erp_idmaeedo');
+        
+        if ($idmaeedo) {
+            echo '<div style="padding: 10px 0;">';
+            echo '<p><strong>' . __('ID Documento:') . '</strong> ' . esc_html($idmaeedo) . '</p>';
+            echo '<button type="button" id="sm-download-invoice" class="button button-primary" data-idmaeedo="' . esc_attr($idmaeedo) . '">' . __('Ver Factura') . '</button>';
+            echo '<p class="description" style="margin-top: 10px;">' . __('Documento creado en Random ERP.') . '</p>';
+            echo '</div>';
+        } else {
+            echo '<div style="padding: 10px 0;">';
+            echo '<p class="description">' . __('No hay factura asociada a esta orden.') . '</p>';
+            echo '</div>';
+        }
+    }
+
+    public function clearProductionToken() {
+        if (!current_user_can('manage_options')) {
+            wp_die('Insufficient permissions');
+        }
+
+        if (!wp_verify_nonce($_POST['nonce'] ?? '', 'sm_clear_token')) {
+            wp_send_json_error('Invalid nonce');
+            return;
+        }
+
+        delete_option('sm_production_token');
+        
+        wp_send_json_success('Token cleared successfully');
     }
 }

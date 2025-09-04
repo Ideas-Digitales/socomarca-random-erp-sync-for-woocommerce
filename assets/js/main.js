@@ -45,27 +45,27 @@ jQuery(document).ready(function($) {
                 $this.find('.sm_sync_result').html('');
                 
                 if (response.success) {
-                    var action = $this.data('action');
+                    let action = $this.data('action');
                     
                     if (action === 'sm_get_categories') {
-                        var created = response.data.created || 0;
-                        var updated = response.data.updated || 0;
-                        var message = response.data.message || 'Proceso completado';
+                        let created = response.data.created || 0;
+                        let updated = response.data.updated || 0;
+                        let message = response.data.message || 'Proceso completado';
                         
                         $this.find('.sm_sync_result').html('<span style="color: green;">' + message + '</span>');
                         console.log('Categorías procesadas:', response.data);
                     } 
                     else if (action === 'sm_get_price_lists') {
-                        var message = response.data.message || 'Listas de precios obtenidas';
-                        var quantity = response.data.quantity || 0;
+                        let message = response.data.message || 'Listas de precios obtenidas';
+                        let quantity = response.data.quantity || 0;
                         
                         $this.find('.sm_sync_result').html('<span style="color: green;">' + message + ' (' + quantity + ' registros)</span>');
                         console.log('Listas de precios obtenidas:', response.data);
                     }
                     else if (action === 'sm_get_brands') {
-                        var message = response.data.message || 'Marcas sincronizadas';
-                        var stats = response.data.stats || {};
-                        var statsText = '';
+                        let message = response.data.message || 'Marcas sincronizadas';
+                        let stats = response.data.stats || {};
+                        let statsText = '';
                         
                         if (stats.created || stats.updated) {
                             statsText = ' (' + (stats.created || 0) + ' creadas, ' + (stats.updated || 0) + ' actualizadas)';
@@ -180,10 +180,10 @@ jQuery(document).ready(function($) {
                 console.log('Respuesta del lote:', response);
                 
                 if (response.success) {
-                    var processed = response.data.processed;
-                    var totalCount = response.data.total;
-                    var totalCreated = response.data.total_created || 0;
-                    var totalUpdated = response.data.total_updated || 0;
+                    let processed = response.data.processed;
+                    let totalCount = response.data.total;
+                    let totalCreated = response.data.total_created || 0;
+                    let totalUpdated = response.data.total_updated || 0;
                     
                     // Actualizar barra de progreso
                     $container.find('.sm_sync_progress_bar_text').html(processed + '/' + totalCount);
@@ -192,7 +192,7 @@ jQuery(document).ready(function($) {
                     $container.find('.sm_sync_status_report').html('[' + totalCreated + ' creados / ' + totalUpdated + ' actualizados]');
                     
                     // Actualizar barra de progreso visual
-                    var percentage = (processed / totalCount) * 100;
+                    let percentage = (processed / totalCount) * 100;
                     $container.find('.sm_sync_progress_bar_fill').css('width', percentage + '%');
                     
                     // Continuar con el siguiente lote si no hemos terminado
@@ -234,10 +234,10 @@ jQuery(document).ready(function($) {
                 console.log('Respuesta del lote productos:', response);
                 
                 if (response.success) {
-                    var processed = response.data.processed;
-                    var totalCount = response.data.total;
-                    var totalCreated = response.data.total_created || 0;
-                    var totalUpdated = response.data.total_updated || 0;
+                    let processed = response.data.processed;
+                    let totalCount = response.data.total;
+                    let totalCreated = response.data.total_created || 0;
+                    let totalUpdated = response.data.total_updated || 0;
                     
                     // Actualizar barra de progreso
                     $container.find('.sm_sync_progress_bar_text').html(processed + '/' + totalCount);
@@ -246,7 +246,7 @@ jQuery(document).ready(function($) {
                     $container.find('.sm_sync_status_report').html('[' + totalCreated + ' creados / ' + totalUpdated + ' actualizados]');
                     
                     // Actualizar barra de progreso visual
-                    var percentage = (processed / totalCount) * 100;
+                    let percentage = (processed / totalCount) * 100;
                     $container.find('.sm_sync_progress_bar_fill').css('width', percentage + '%');
                     
                     // Continuar con el siguiente lote si no hemos terminado
@@ -278,13 +278,13 @@ jQuery(document).ready(function($) {
         e.preventDefault();
         
         // Confirmación doble para seguridad
-        var confirmation1 = confirm('⚠️ PELIGRO: ¿Estás seguro de que quieres ELIMINAR TODOS LOS USUARIOS excepto administradores?\n\nEsta acción NO SE PUEDE DESHACER.');
+        let confirmation1 = confirm('PELIGRO: ¿Estás seguro de que quieres ELIMINAR TODOS LOS USUARIOS excepto administradores?\n\nEsta acción NO SE PUEDE DESHACER.');
         
         if (!confirmation1) {
             return;
         }
         
-        var confirmation2 = prompt('Para confirmar, escribe exactamente: DELETE_ALL_USERS');
+        let confirmation2 = prompt('Para confirmar, escribe exactamente: DELETE_ALL_USERS');
         
         if (confirmation2 !== 'DELETE_ALL_USERS') {
             alert('Confirmación incorrecta. Operación cancelada.');
@@ -331,13 +331,13 @@ jQuery(document).ready(function($) {
         e.preventDefault();
         
         // Confirmación doble para seguridad
-        var confirmation1 = confirm('⚠️ PELIGRO: ¿Estás seguro de que quieres ELIMINAR TODAS LAS CATEGORÍAS de WooCommerce?\n\nEsta acción NO SE PUEDE DESHACER.');
+        let confirmation1 = confirm('PELIGRO: ¿Estás seguro de que quieres ELIMINAR TODAS LAS CATEGORÍAS de WooCommerce?\n\nEsta acción NO SE PUEDE DESHACER.');
         
         if (!confirmation1) {
             return;
         }
         
-        var confirmation2 = prompt('Para confirmar, escribe exactamente: DELETE_ALL_CATEGORIES');
+        let confirmation2 = prompt('Para confirmar, escribe exactamente: DELETE_ALL_CATEGORIES');
         
         if (confirmation2 !== 'DELETE_ALL_CATEGORIES') {
             alert('Confirmación incorrecta. Operación cancelada.');
@@ -384,13 +384,13 @@ jQuery(document).ready(function($) {
         e.preventDefault();
         
         // Confirmación doble para seguridad
-        var confirmation1 = confirm('⚠️ PELIGRO: ¿Estás seguro de que quieres ELIMINAR TODOS LOS PRODUCTOS de WooCommerce?\n\nEsta acción NO SE PUEDE DESHACER.');
+        let confirmation1 = confirm('PELIGRO: ¿Estás seguro de que quieres ELIMINAR TODOS LOS PRODUCTOS de WooCommerce?\n\nEsta acción NO SE PUEDE DESHACER.');
         
         if (!confirmation1) {
             return;
         }
         
-        var confirmation2 = prompt('Para confirmar, escribe exactamente: DELETE_ALL_PRODUCTS');
+        let confirmation2 = prompt('Para confirmar, escribe exactamente: DELETE_ALL_PRODUCTS');
         
         if (confirmation2 !== 'DELETE_ALL_PRODUCTS') {
             alert('Confirmación incorrecta. Operación cancelada.');
@@ -437,13 +437,13 @@ jQuery(document).ready(function($) {
         e.preventDefault();
         
         // Confirmación doble para seguridad
-        var confirmation1 = confirm('⚠️ PELIGRO: ¿Estás seguro de que quieres ELIMINAR TODAS LAS MARCAS?\n\nEsta acción NO SE PUEDE DESHACER.');
+        let confirmation1 = confirm('PELIGRO: ¿Estás seguro de que quieres ELIMINAR TODAS LAS MARCAS?\n\nEsta acción NO SE PUEDE DESHACER.');
         
         if (!confirmation1) {
             return;
         }
         
-        var confirmation2 = prompt('Para confirmar, escribe exactamente: DELETE_ALL_BRANDS');
+        let confirmation2 = prompt('Para confirmar, escribe exactamente: DELETE_ALL_BRANDS');
         
         if (confirmation2 !== 'DELETE_ALL_BRANDS') {
             alert('Confirmación incorrecta. Operación cancelada.');
@@ -490,19 +490,19 @@ jQuery(document).ready(function($) {
         e.preventDefault();
         
         // Confirmación triple para máxima seguridad
-        var confirmation1 = confirm('🚨 MÁXIMO PELIGRO: ¿Estás seguro de que quieres ELIMINAR TODO?\n\n• TODOS los productos de WooCommerce\n• TODAS las categorías\n• TODOS los usuarios (excepto administradores)\n\nEsta acción NO SE PUEDE DESHACER.');
+        let confirmation1 = confirm('MÁXIMO PELIGRO: ¿Estás seguro de que quieres ELIMINAR TODO?\n\n• TODOS los productos de WooCommerce\n• TODAS las categorías\n• TODOS los usuarios (excepto administradores)\n\nEsta acción NO SE PUEDE DESHACER.');
         
         if (!confirmation1) {
             return;
         }
         
-        var confirmation2 = confirm('⚠️ ÚLTIMA ADVERTENCIA: Esta acción eliminará permanentemente:\n\n✗ Productos\n✗ Categorías\n✗ Usuarios\n\n¿Estás COMPLETAMENTE SEGURO?');
+        let confirmation2 = confirm('ÚLTIMA ADVERTENCIA: Esta acción eliminará permanentemente:\n\nX Productos\nX Categorías\nX Usuarios\n\n¿Estás COMPLETAMENTE SEGURO?');
         
         if (!confirmation2) {
             return;
         }
         
-        var confirmText = prompt('Para confirmar, escribe exactamente: DELETE_ALL_DATA');
+        let confirmText = prompt('Para confirmar, escribe exactamente: DELETE_ALL_DATA');
         if (confirmText !== 'DELETE_ALL_DATA') {
             alert('Texto de confirmación incorrecto. Operación cancelada.');
             return;
@@ -523,7 +523,7 @@ jQuery(document).ready(function($) {
                 confirm: 'DELETE_ALL_DATA'
             },
             beforeSend: function() {
-                $button.addClass('disabled').text('🔄 Inicializando...');
+                $button.addClass('disabled').text('Inicializando...');
                 $result.html('<div class="loader"></div><span style="margin-left: 10px; color: orange;">Preparando eliminación masiva...</span>');
                 $progress.hide();
             },
@@ -532,12 +532,12 @@ jQuery(document).ready(function($) {
                 
                 if (response.success) {
                     // Initialize progress bar
-                    var totalItems = response.data.total_items;
-                    var productsTotal = response.data.products_total;
-                    var categoriesTotal = response.data.categories_total;
-                    var usersTotal = response.data.users_total;
+                    let totalItems = response.data.total_items;
+                    let productsTotal = response.data.products_total;
+                    let categoriesTotal = response.data.categories_total;
+                    let usersTotal = response.data.users_total;
                     
-                    $result.html('<span style="color: blue;">📊 ' + response.data.message + '</span>');
+                    $result.html('<span style="color: blue;">' + response.data.message + '</span>');
                     $progress.show();
                     $progressText.text('0/' + totalItems);
                     $progressBar.css('width', '0%');
@@ -546,14 +546,14 @@ jQuery(document).ready(function($) {
                     // Start batch processing
                     deleteBatchData(totalItems, productsTotal, categoriesTotal, usersTotal, 0, 0, 0);
                 } else {
-                    $button.removeClass('disabled').text('🗑️ ELIMINAR TODO (Productos + Categorías + Usuarios)');
-                    $result.html('<span style="color: red;">❌ Error: ' + response.data.message + '</span>');
+                    $button.removeClass('disabled').text('ELIMINAR TODO (Productos + Categorías + Usuarios)');
+                    $result.html('<span style="color: red;">Error: ' + response.data.message + '</span>');
                 }
             },
             error: function(xhr, status, error) {
                 console.error('Error AJAX inicialización eliminación masiva:', xhr, status, error);
-                $button.removeClass('disabled').text('🗑️ ELIMINAR TODO (Productos + Categorías + Usuarios)');
-                $result.html('<span style="color: red;">❌ Error en la petición: ' + error + '</span>');
+                $button.removeClass('disabled').text('ELIMINAR TODO (Productos + Categorías + Usuarios)');
+                $result.html('<span style="color: red;">Error en la petición: ' + error + '</span>');
             }
         });
     });
@@ -566,7 +566,7 @@ jQuery(document).ready(function($) {
         var $progressText = $progress.find('.sm_sync_progress_bar_text');
         var $statusReport = $progress.find('.sm_delete_status_report');
         
-        var totalDeleted = productsDeleted + categoriesDeleted + usersDeleted;
+        let totalDeleted = productsDeleted + categoriesDeleted + usersDeleted;
         
         $.ajax({
             url: socomarca_ajax.ajax_url,
@@ -578,20 +578,20 @@ jQuery(document).ready(function($) {
                 console.log('Respuesta lote eliminación:', response);
                 
                 if (response.success) {
-                    var data = response.data;
-                    var newTotalDeleted = data.total_deleted;
-                    var phaseComplete = data.phase_complete;
-                    var allComplete = data.all_complete;
+                    let data = response.data;
+                    let newTotalDeleted = data.total_deleted;
+                    let phaseComplete = data.phase_complete;
+                    let allComplete = data.all_complete;
                     
                     // Update progress bar
-                    var progressPercent = (newTotalDeleted / totalItems) * 100;
+                    let progressPercent = (newTotalDeleted / totalItems) * 100;
                     $progressBar.css('width', progressPercent + '%');
                     $progressText.text(newTotalDeleted + '/' + totalItems);
                     
                     // Update status based on phase
-                    var currentProductsDeleted = productsDeleted;
-                    var currentCategoriesDeleted = categoriesDeleted;
-                    var currentUsersDeleted = usersDeleted;
+                    let currentProductsDeleted = productsDeleted;
+                    let currentCategoriesDeleted = categoriesDeleted;
+                    let currentUsersDeleted = usersDeleted;
                     
                     if (data.phase === 'products') {
                         currentProductsDeleted = Math.min(productsTotal, productsDeleted + data.deleted_this_batch);
@@ -607,17 +607,17 @@ jQuery(document).ready(function($) {
                     $statusReport.text(`[Productos: ${currentProductsDeleted}/${productsTotal} | Categorías: ${currentCategoriesDeleted}/${categoriesTotal} | Usuarios: ${currentUsersDeleted}/${usersTotal}]`);
                     
                     // Update status message
-                    var phaseText = data.phase === 'products' ? 'productos' : 
+                    let phaseText = data.phase === 'products' ? 'productos' : 
                                    data.phase === 'categories' ? 'categorías' : 'usuarios';
-                    $result.html('<span style="color: orange;">🔄 Eliminando ' + phaseText + '... ' + data.message + '</span>');
+                    $result.html('<span style="color: orange;">Eliminando ' + phaseText + '... ' + data.message + '</span>');
                     
                     if (allComplete) {
                         // Process complete
-                        $button.removeClass('disabled').text('🗑️ ELIMINAR TODO (Productos + Categorías + Usuarios)');
+                        $button.removeClass('disabled').text('ELIMINAR TODO (Productos + Categorías + Usuarios)');
                         
                         if (data.final_summary) {
-                            var summary = data.final_summary;
-                            var finalMsg = '✅ ' + data.message + 
+                            let summary = data.final_summary;
+                            let finalMsg = '' + data.message + 
                                          '<br><small style="color: #666;">Detalles: ' + 
                                          summary.products_deleted + ' productos, ' + 
                                          summary.categories_deleted + ' categorías, ' + 
@@ -626,7 +626,7 @@ jQuery(document).ready(function($) {
                         }
                         
                         if (data.errors && data.errors.length > 0) {
-                            $result.append('<br><span style="color: orange;">⚠️ Errores: ' + data.errors.join(' | ') + '</span>');
+                            $result.append('<br><span style="color: orange;">Errores: ' + data.errors.join(' | ') + '</span>');
                         }
                         
                         // Hide progress bar after completion
@@ -641,15 +641,15 @@ jQuery(document).ready(function($) {
                         }, 500);
                     }
                 } else {
-                    $button.removeClass('disabled').text('🗑️ ELIMINAR TODO (Productos + Categorías + Usuarios)');
+                    $button.removeClass('disabled').text('ELIMINAR TODO (Productos + Categorías + Usuarios)');
                     $result.html('<span style="color: red;">❌ Error en lote: ' + response.data.message + '</span>');
                     $progress.hide();
                 }
             },
             error: function(xhr, status, error) {
                 console.error('Error AJAX lote eliminación:', xhr, status, error);
-                $button.removeClass('disabled').text('🗑️ ELIMINAR TODO (Productos + Categorías + Usuarios)');
-                $result.html('<span style="color: red;">❌ Error en la petición: ' + error + '</span>');
+                $button.removeClass('disabled').text('ELIMINAR TODO (Productos + Categorías + Usuarios)');
+                $result.html('<span style="color: red;">Error en la petición: ' + error + '</span>');
                 $progress.hide();
             }
         });
@@ -667,7 +667,7 @@ jQuery(document).ready(function($) {
         $(this).addClass('nav-tab-active');
         
         // Mostrar el contenido correspondiente
-        var target = $(this).attr('href');
+        let target = $(this).attr('href');
         $(target).addClass('active').show();
     });
     
@@ -693,7 +693,7 @@ jQuery(document).ready(function($) {
                 $button.removeClass('disabled').text('Ejecutar sincronización completa');
                 
                 if (response.success) {
-                    var message = '<span style="color: #46b450;">✅ ' + response.data.message + '</span>';
+                    let message = '<span style="color: #46b450;">' + response.data.message + '</span>';
                     message += '<br><strong>Tiempo de ejecución:</strong> ' + response.data.execution_time + ' segundos';
                     
                     if (response.data.results) {
@@ -711,12 +711,12 @@ jQuery(document).ready(function($) {
                         location.reload();
                     }, 3000);
                 } else {
-                    $result.html('<span style="color: #dc3232;">❌ ' + response.data.message + '</span>');
+                    $result.html('<span style="color: #dc3232;">' + response.data.message + '</span>');
                 }
             },
             error: function(xhr, status, error) {
                 $button.removeClass('disabled').text('Ejecutar sincronización completa');
-                $result.html('<span style="color: #dc3232;">❌ Error de conexión: ' + error + '</span>');
+                $result.html('<span style="color: #dc3232;">Error de conexión: ' + error + '</span>');
             }
         });
     });

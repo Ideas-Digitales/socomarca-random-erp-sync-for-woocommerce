@@ -16,7 +16,7 @@ describe('EntityService - Integración con API Real', function () {
             // If API connection fails, test that it fails gracefully
             if ($result === false) {
                 expect($result)->toBeFalse();
-                error_log('⚠️  EntityService: No se pudo conectar al API - usando credenciales demo');
+                error_log('WARNING EntityService: No se pudo conectar al API - usando credenciales demo');
                 return;
             }
             
@@ -52,7 +52,7 @@ describe('EntityService - Integración con API Real', function () {
             
             // With demo credentials, this will likely fail, but test the behavior
             if ($result === false) {
-                error_log('⚠️  EntityService: Configuración demo no permite acceso');
+                error_log('WARNING EntityService: Configuración demo no permite acceso');
                 expect($result)->toBeFalse();
             } else {
                 expect($result)->toBeArray();
@@ -246,7 +246,7 @@ describe('EntityService - Integración con API Real', function () {
             
             // With demo credentials, this will likely fail
             if (!$result['success']) {
-                error_log('⚠️  EntityService: Cache test con credenciales demo');
+                error_log('WARNING EntityService: Cache test con credenciales demo');
                 expect($result['success'])->toBeFalse();
                 return;
             }
@@ -285,7 +285,7 @@ describe('EntityService - Integración con API Real', function () {
             
             // With demo credentials, both will likely fail the same way
             if ($result1 === false && $result2 === false) {
-                error_log('⚠️  EntityService: Ambas configuraciones fallan con credenciales demo');
+                error_log('WARNING EntityService: Ambas configuraciones fallan con credenciales demo');
                 expect($result1)->toBeFalse();
                 expect($result2)->toBeFalse();
             } else {

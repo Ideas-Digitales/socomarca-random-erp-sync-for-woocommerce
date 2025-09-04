@@ -95,7 +95,9 @@ describe('Servicio de Listas de Precios - Integración con API Real', function (
         });
         
         it('maneja errores de conexión de manera elegante', function () {
-            update_option('sm_api_url', 'http://invalid.url');
+            update_option('sm_api_url', 'http://invalid.url:9999');
+            update_option('sm_api_user', 'invalid_user');
+            update_option('sm_api_password', 'invalid_password');
             
             $service = new PriceListService();
             $result = $service->getPriceLists();
