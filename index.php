@@ -84,3 +84,9 @@ error_reporting(1);
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_log('=== SOCOMARCA ERP: Debug mode enabled ===');
+
+
+add_action( 'get_custom_logo', 'add_custom_text_before_shop', 15 );
+function add_custom_text_before_shop() {
+    echo do_shortcode('[socomarca_location_stock]');
+}

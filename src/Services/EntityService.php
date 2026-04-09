@@ -2,26 +2,29 @@
 
 namespace Socomarca\RandomERP\Services;
 
+use Exception;
+
 class EntityService extends BaseApiService {
     
     public function getEntities() {
         $company_code = get_option('sm_company_code', '01');
         $company_rut = get_option('sm_company_rut', '134549696');
-        $modalidad = get_option('sm_modalidad', 'SUC01');
-        
-        $endpoint = "/web32/entidades?empresa={$company_code}&rut={$company_rut}&modalidad={$modalidad}";
-        $entities = $this->makeApiRequest($endpoint);
-        
+
+        $endpoint = "/web32/entidades?empresa={$company_code}&rut={$company_rut}";
+
+        // Usar timeout de 180 segundos para entidades (muchos registros)
+        $entities = $this->makeApiRequest($endpoint, 'GET', null, 180);
+
         if ($entities !== false && is_array($entities)) {
             return [
                 'quantity' => count($entities),
                 'items' => $entities
             ];
         }
-        
+
         return false;
     }
-    
+
     public function createUsersFromEntities() {
         $entities = $this->getEntities();
         

@@ -84,17 +84,17 @@ abstract class BaseApiService {
         return false;
     }
     
-    protected function makeApiRequest($endpoint, $method = 'GET', $data = null) {
+    protected function makeApiRequest($endpoint, $method = 'GET', $data = null, $timeout = 30) {
         $token = $this->getAuthToken();
         if (!$token) {
             return false;
         }
-        
+
         $url = $this->api_url . $endpoint;
-        
+
         $args = [
             'method' => $method,
-            'timeout' => 30,
+            'timeout' => $timeout,
             'headers' => [
                 'Authorization' => 'Bearer ' . $token
             ]
@@ -106,14 +106,14 @@ abstract class BaseApiService {
         }
         
         $response = wp_remote_request($url, $args);
-        
+
         if (is_wp_error($response)) {
             return false;
         }
-        
+
         $status_code = wp_remote_retrieve_response_code($response);
         $body_raw = wp_remote_retrieve_body($response);
-        
+
         if ($status_code === 200) {
             $body = json_decode($body_raw, true);
             

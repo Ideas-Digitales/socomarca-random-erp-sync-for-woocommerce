@@ -11,8 +11,12 @@ use Socomarca\RandomERP\Ajax\BrandAjaxHandler;
 use Socomarca\RandomERP\Ajax\CombinedAjaxHandler;
 use Socomarca\RandomERP\Ajax\CronSyncAjaxHandler;
 use Socomarca\RandomERP\Admin\AdminPages;
+use Socomarca\RandomERP\Admin\LocationMappingAdmin;
+use Socomarca\RandomERP\Ajax\LocationMappingAjaxHandler;
+use Socomarca\RandomERP\Filters\LocationProductFilter;
 use Socomarca\RandomERP\Services\DocumentService;
 use Socomarca\RandomERP\Services\CronSyncService;
+use Socomarca\RandomERP\Shortcodes\LocationStockShortcode;
 
 class Plugin {
     
@@ -60,9 +64,13 @@ class Plugin {
         
         
         new AdminPages();
-        
-        
+        new LocationMappingAdmin();
+        new LocationMappingAjaxHandler();
+
         new DocumentService();
+
+        new LocationStockShortcode();
+        new LocationProductFilter();
         
         error_log('Socomarca ERP: Componentes inicializados exitosamente');
     }

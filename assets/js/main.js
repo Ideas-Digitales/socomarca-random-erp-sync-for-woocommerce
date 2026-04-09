@@ -57,10 +57,18 @@ jQuery(document).ready(function($) {
                     } 
                     else if (action === 'sm_get_price_lists') {
                         var message = response.data.message || 'Listas de precios obtenidas';
-                        var quantity = response.data.quantity || 0;
-                        
-                        $this.find('.sm_sync_result').html('<span style="color: green;">' + message + ' (' + quantity + ' registros)</span>');
+                        var total = response.data.total || 0;
+
                         console.log('Listas de precios obtenidas:', response.data);
+
+                        if (total > 0) {
+                            $this.find('.sm_sync_progress').css('display', 'inline-block');
+                            $this.find('.sm_sync_progress_bar_text').html('0/' + total);
+                            $this.find('.sm_sync_status_report').html('[0 procesados / 0 actualizados]');
+                            processBatchPriceLists($this, 0, total, 10);
+                        } else {
+                            $this.find('.sm_sync_result').html('<span style="color: orange;">Sin datos para procesar</span>');
+                        }
                     }
                     else if (action === 'sm_get_brands') {
                         var message = response.data.message || 'Marcas sincronizadas';
@@ -267,13 +275,67 @@ jQuery(document).ready(function($) {
             },
             error: function(xhr, status, error) {
                 console.error('Error AJAX productos:', xhr, status, error);
-                $container.find('.sm_sync_result').html('<span style="color: red;">Error en la petición AJAX: ' + error + '</span>');
+                $container.find('.sm_sync_result').html('<span style="color: red;">Error en la peticion AJAX: ' + error + '</span>');
                 $container.find('.sm_sync_progress').css('display', 'none');
             }
         });
     }
-    
-    // Manejar botón de eliminar usuarios
+
+    function processBatchPriceLists($container, offset, total, batchSize) {
+        console.log('Procesando lote precios - offset:', offset, 'total:', total, 'batchSize:', batchSize);
+
+        $.ajax({
+            url: socomarca_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'sm_process_batch_price_lists',
+                offset: offset,
+                batch_size: batchSize
+            },
+            success: function(response) {
+                console.log('Respuesta del lote precios:', response);
+
+                if (response.success) {
+                    var processed = response.data.processed;
+                    var totalCount = response.data.total;
+                    var totalProcessed = response.data.total_processed || 0;
+                    var totalUpdated = response.data.total_updated || 0;
+
+                    // Actualizar barra de progreso
+                    $container.find('.sm_sync_progress_bar_text').html(processed + '/' + totalCount);
+
+                    // Actualizar reporte de estado acumulativo
+                    $container.find('.sm_sync_status_report').html('[' + totalProcessed + ' procesados / ' + totalUpdated + ' actualizados]');
+
+                    // Actualizar barra de progreso visual
+                    var percentage = (processed / totalCount) * 100;
+                    $container.find('.sm_sync_progress_bar_fill').css('width', percentage + '%');
+
+                    // Continuar con el siguiente lote si no hemos terminado
+                    if (!response.data.is_complete) {
+                        setTimeout(function() {
+                            processBatchPriceLists($container, processed, totalCount, batchSize);
+                        }, 500); // Pausa de 500ms entre lotes
+                    } else {
+                        // Proceso completado
+                        $container.find('.sm_sync_result').html('<span style="color: green;">Proceso completado: ' + processed + ' productos procesados [' + totalProcessed + ' procesados / ' + totalUpdated + ' actualizados]</span>');
+                        $container.find('.sm_sync_progress').css('display', 'none');
+                    }
+                } else {
+                    console.error('Error en el lote precios:', response);
+                    $container.find('.sm_sync_result').html('<span style="color: red;">Error: ' + (response.data ? response.data.message : 'Error desconocido') + '</span>');
+                    $container.find('.sm_sync_progress').css('display', 'none');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error AJAX precios:', xhr, status, error);
+                $container.find('.sm_sync_result').html('<span style="color: red;">Error en la peticion AJAX: ' + error + '</span>');
+                $container.find('.sm_sync_progress').css('display', 'none');
+            }
+        });
+    }
+
+    // Manejar boton de eliminar usuarios
     $('#sm_delete_all_users').click(function(e) {
         e.preventDefault();
         
