@@ -38,18 +38,25 @@ class AdminPages {
         
         $plugin_url = SOCOMARCA_ERP_PLUGIN_URL;
         
+        $admin_css_version = file_exists(SOCOMARCA_ERP_PLUGIN_DIR . 'assets/css/admin.css')
+            ? (string) filemtime(SOCOMARCA_ERP_PLUGIN_DIR . 'assets/css/admin.css')
+            : SOCOMARCA_ERP_VERSION;
+        $admin_js_version = file_exists(SOCOMARCA_ERP_PLUGIN_DIR . 'assets/js/main.js')
+            ? (string) filemtime(SOCOMARCA_ERP_PLUGIN_DIR . 'assets/js/main.js')
+            : SOCOMARCA_ERP_VERSION;
+
         wp_enqueue_style(
             'socomarca-admin-css',
             $plugin_url . 'assets/css/admin.css',
             [],
-            '1.0.0'
+            $admin_css_version
         );
         
         wp_enqueue_script(
             'socomarca-admin-js',
             $plugin_url . 'assets/js/main.js',
             ['jquery'],
-            '1.0.0',
+            $admin_js_version,
             true
         );
         

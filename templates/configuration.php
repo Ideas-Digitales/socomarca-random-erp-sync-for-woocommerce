@@ -77,6 +77,33 @@
                 </tr>
                 <tr>
                     <th>
+                        Bodegas
+                    </th>
+                    <td class="sm_sync" data-action="sm_get_warehouses">
+                        <a class="button" href="#">Sincronizar bodegas</a>
+                        <span class="sm_sync_result"></span>
+                    </td>
+                </tr>
+                <tr>
+                    <th>
+                        Stock por Bodega
+                    </th>
+                    <td class="sm_sync_stock">
+                        <a class="button" href="#">Sincronizar stock</a>
+                        <span class="sm_sync_result"></span>
+                        <span class="sm_sync_progress" style="display:none;">
+                            <div class="sm_sync_progress_bar">
+                                <span class="sm_sync_progress_bar_text">0/0</span>
+                                <div class="sm_sync_progress_bar_fill"></div>
+                            </div>
+                            <span class="sm_sync_status_report" style="margin-left: 10px; font-weight: bold; color: #0073aa;">
+                                [0 procesados / 0 actualizados]
+                            </span>
+                        </span>
+                    </td>
+                </tr>
+                <tr>
+                    <th>
                         Entidades
                     </th>
                     <td class="sm_sync" data-action="sm_get_entities">
@@ -378,7 +405,7 @@
                     </th>
                     <td>
                         <a class="button button-secondary" href="#" id="sm_delete_all_data" style="background-color: #dc3545; border-color: #dc3545; color: white; font-weight: bold;">
-                            🗑️ ELIMINAR TODO (Productos + Categorías + Usuarios)
+                            ELIMINAR TODO
                         </a>
                         <span id="sm_delete_all_data_result"></span>
                         <span class="sm_delete_all_data_progress" style="display: none;">
@@ -454,6 +481,20 @@
                         <span id="sm_delete_brands_result"></span>
                         <p class="description" style="color: #d63384;">
                             <strong>⚠️ PELIGRO:</strong> Esta acción eliminará PERMANENTEMENTE todas las marcas. No se puede deshacer.
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <th>
+                        Gestión de Bodegas
+                    </th>
+                    <td>
+                        <a class="button button-secondary" href="#" id="sm_delete_all_warehouses" style="background-color: #dc3545; border-color: #dc3545; color: white;">
+                            Eliminar todas las bodegas
+                        </a>
+                        <span id="sm_delete_warehouses_result"></span>
+                        <p class="description" style="color: #d63384;">
+                            <strong>⚠️ PELIGRO:</strong> Esta acción eliminará PERMANENTEMENTE todos los términos de la taxonomía <code>locations</code>. No se puede deshacer.
                         </p>
                     </td>
                 </tr>

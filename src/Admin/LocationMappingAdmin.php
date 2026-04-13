@@ -11,7 +11,6 @@ class LocationMappingAdmin {
     public function __construct() {
         add_action('admin_menu', [$this, 'addMenuPage']);
         add_action('admin_post_sm_save_location_mapping', [$this, 'saveMapping']);
-        add_action('admin_post_sm_run_location_seeder', [$this, 'runSeeder']);
     }
 
     public function addMenuPage(): void {
@@ -28,7 +27,25 @@ class LocationMappingAdmin {
     public function renderPage(): void {
         $mapping    = self::getMapping();
         $warehouses = $this->getWarehouses();
+        $cl_states  = $this->getChileStates();
+        $cl_places  = $this->getChilePlaces();
         include SOCOMARCA_ERP_PLUGIN_DIR . 'templates/location-mapping.php';
+    }
+
+    private function getChileStates(): array {
+        if (!function_exists('WC') || !WC()->countries) {
+            return [];
+        }
+        $states = WC()->countries->get_states('CL');
+        return is_array($states) ? $states : [];
+    }
+
+    private function getChilePlaces(): array {
+        if (isset($GLOBALS['wc_states_places']) && method_exists($GLOBALS['wc_states_places'], 'get_places')) {
+            $places = $GLOBALS['wc_states_places']->get_places('CL');
+            return is_array($places) ? $places : [];
+        }
+        return [];
     }
 
     public function saveMapping(): void {
@@ -45,19 +62,6 @@ class LocationMappingAdmin {
         }
 
         wp_redirect(add_query_arg('saved', '1', wp_get_referer()));
-        exit;
-    }
-
-    public function runSeeder(): void {
-        if (!current_user_can('manage_options')) {
-            wp_die('No autorizado');
-        }
-        check_admin_referer('sm_location_seeder_nonce');
-
-        $seeder = new LocationMappingSeeder();
-        $seeder->run();
-
-        wp_redirect(add_query_arg('seeded', '1', wp_get_referer()));
         exit;
     }
 

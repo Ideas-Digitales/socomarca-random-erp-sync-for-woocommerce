@@ -24,6 +24,12 @@ class LocationProductFilter {
     }
 
     public function filterByLocation(\WP_Query $query): void {
+        // Multiloca Lite now applies taxonomy + stock-by-location filtering.
+        // Avoid stacking two independent pre_get_posts filters.
+        if (class_exists('\Multiloca_Lite_Shop_Filter')) {
+            return;
+        }
+
         if (is_admin() || !$query->is_main_query()) {
             return;
         }

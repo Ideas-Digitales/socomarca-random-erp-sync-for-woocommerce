@@ -86,6 +86,9 @@ Una vez iniciados los servicios, configura WordPress con:
 
 ## Configuración Rápida
 
+Fuente Postman API:
+https://documenter.getpostman.com/view/467703/Tz5v3bJp
+
 ### 1. Acceso al Panel
 Navega a **wp-admin/admin.php?page=socomarca-configuration**
 

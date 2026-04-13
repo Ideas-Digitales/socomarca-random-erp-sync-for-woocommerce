@@ -78,6 +78,8 @@ function dd($data) {
     die();
 }
 
+add_filter( 'woocommerce_is_checkout_block_default', '__return_false' );
+
 
 //Activa el modo debug
 error_reporting(1);

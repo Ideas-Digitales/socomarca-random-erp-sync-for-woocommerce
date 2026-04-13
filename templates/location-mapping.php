@@ -5,6 +5,12 @@ if (!defined('ABSPATH')) {
 
 /** @var array $mapping */
 /** @var array $warehouses */
+/** @var array $cl_states  — ['CL-RM' => 'Metropolitana de Santiago', ...] */
+/** @var array $cl_places  — ['CL-RM' => ['Santiago', 'Las Condes', ...], ...] */
+
+// Regiones que ya estan en el mapeo (para excluirlas del selector)
+$mapped_region_ids = array_column($mapping, 'id');
+$available_states  = array_diff_key($cl_states, array_flip($mapped_region_ids));
 ?>
 <div class="wrap sm-location-mapping-wrap">
     <h1>Mapeo de Ubicaciones</h1>
@@ -13,30 +19,43 @@ if (!defined('ABSPATH')) {
         <div class="notice notice-success is-dismissible"><p>Configuracion guardada correctamente.</p></div>
     <?php endif; ?>
 
-    <?php if (isset($_GET['seeded'])): ?>
-        <div class="notice notice-success is-dismissible"><p>Datos de regiones y comunas cargados correctamente.</p></div>
-    <?php endif; ?>
-
     <p>
-        Configure las regiones y comunas disponibles para envio, y asigne la bodega que atiende cada comuna.
-        Las bodegas disponibles se obtienen desde la taxonomia <a href="<?php echo esc_url(admin_url('edit-tags.php?taxonomy=locations&post_type=product')); ?>">Locations</a>.
+        Configure las regiones de Chile disponibles para envio y asigne la bodega que atiende cada comuna.
+        Las regiones y comunas provienen del plugin <strong>States, Cities and Places for WooCommerce</strong> y
+        coinciden con los datos que WooCommerce registra en cada pedido.
+        Las bodegas disponibles se obtienen desde la taxonomia
+        <a href="<?php echo esc_url(admin_url('edit-tags.php?taxonomy=locations&post_type=product')); ?>">Locations</a>.
     </p>
 
     <?php if (empty($warehouses)): ?>
         <div class="notice notice-warning">
-            <p>No hay bodegas configuradas en la taxonomia Locations. <a href="<?php echo esc_url(admin_url('edit-tags.php?taxonomy=locations&post_type=product')); ?>">Agregar bodegas</a></p>
+            <p>No hay bodegas configuradas en la taxonomia Locations.
+            <a href="<?php echo esc_url(admin_url('edit-tags.php?taxonomy=locations&post_type=product')); ?>">Agregar bodegas</a></p>
         </div>
     <?php endif; ?>
 
-    <?php if (empty($mapping)): ?>
-        <div class="notice notice-info">
-            <p>No hay regiones configuradas. Puede cargar las regiones y comunas de Chile con el siguiente boton:</p>
-            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display:inline;">
-                <?php wp_nonce_field('sm_location_seeder_nonce'); ?>
-                <input type="hidden" name="action" value="sm_run_location_seeder">
-                <button type="submit" class="button button-secondary">Cargar datos de Chile (RM y Valparaiso)</button>
-            </form>
+    <?php if (empty($cl_states)): ?>
+        <div class="notice notice-warning">
+            <p>No se pudieron obtener las regiones de Chile. Verifique que el plugin
+            <strong>States, Cities and Places for WooCommerce</strong> este activo y que Chile
+            este habilitado como pais de envio en WooCommerce.</p>
         </div>
+    <?php endif; ?>
+
+    <!-- Selector para agregar region -->
+    <?php if (!empty($available_states)): ?>
+    <div class="sm-add-region-panel" style="margin-bottom:20px; padding:14px; background:#fff; border:1px solid #ccd0d4; border-radius:4px;">
+        <strong>Agregar region</strong>
+        <div style="margin-top:10px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <select id="sm-region-selector" style="min-width:260px;">
+                <option value="">-- Seleccione una region --</option>
+                <?php foreach ($available_states as $code => $name): ?>
+                <option value="<?php echo esc_attr($code); ?>"><?php echo esc_html($name); ?></option>
+                <?php endforeach; ?>
+            </select>
+            <button type="button" class="button button-secondary" id="sm-add-region-btn">Agregar region</button>
+        </div>
+    </div>
     <?php endif; ?>
 
     <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" id="sm-location-mapping-form">
@@ -46,31 +65,41 @@ if (!defined('ABSPATH')) {
 
         <div id="sm-regions-container">
             <?php foreach ($mapping as $ri => $region): ?>
-            <div class="sm-region-block" data-region-index="<?php echo $ri; ?>">
+            <div class="sm-region-block" data-region-id="<?php echo esc_attr($region['id']); ?>">
                 <div class="sm-region-header">
                     <span class="sm-region-toggle dashicons dashicons-arrow-down-alt2"></span>
                     <strong class="sm-region-title"><?php echo esc_html($region['name']); ?></strong>
+                    <code class="sm-region-code" style="font-size:0.85em; color:#888; font-weight:normal;"><?php echo esc_html($region['id']); ?></code>
                     <span class="sm-region-meta">(<?php echo count($region['comunas'] ?? []); ?> comunas)</span>
                     <button type="button" class="button button-small sm-remove-region" style="margin-left:auto;">Eliminar region</button>
                 </div>
                 <div class="sm-region-body">
-                    <div class="sm-region-fields" style="margin-bottom:8px;">
-                        <label>ID: <input type="text" class="sm-region-id regular-text" value="<?php echo esc_attr($region['id']); ?>"></label>
-                        <label style="margin-left:16px;">Nombre: <input type="text" class="sm-region-name regular-text" value="<?php echo esc_attr($region['name']); ?>"></label>
+                    <div class="sm-region-bulk-assign" style="margin-bottom:10px;">
+                        <label>
+                            Asignar bodega a toda la region:
+                            <select class="sm-region-warehouse">
+                                <option value="">-- Seleccione una bodega --</option>
+                                <?php foreach ($warehouses as $wh): ?>
+                                <option value="<?php echo esc_attr((string) $wh->term_id); ?>">
+                                    <?php echo esc_html($wh->name); ?>
+                                </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
+                        <button type="button" class="button button-small sm-assign-region-warehouse">Asignar a todas las comunas</button>
                     </div>
                     <table class="widefat sm-comunas-table">
                         <thead>
                             <tr>
                                 <th>Comuna</th>
                                 <th>Bodega asignada</th>
-                                <th></th>
                             </tr>
                         </thead>
                         <tbody class="sm-comunas-body">
-                            <?php foreach (($region['comunas'] ?? []) as $ci => $comuna): ?>
+                            <?php foreach (($region['comunas'] ?? []) as $comuna): ?>
                             <tr class="sm-comuna-row">
                                 <td>
-                                    <input type="text" class="sm-comuna-name regular-text" value="<?php echo esc_attr($comuna['name']); ?>">
+                                    <span class="sm-comuna-name"><?php echo esc_html($comuna['name']); ?></span>
                                     <input type="hidden" class="sm-comuna-id" value="<?php echo esc_attr($comuna['id']); ?>">
                                 </td>
                                 <td>
@@ -83,35 +112,21 @@ if (!defined('ABSPATH')) {
                                         <?php endforeach; ?>
                                     </select>
                                 </td>
-                                <td>
-                                    <button type="button" class="button button-small sm-remove-comuna">Eliminar</button>
-                                </td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
-                    <button type="button" class="button button-small sm-add-comuna" style="margin-top:8px;">+ Agregar comuna</button>
                 </div>
             </div>
             <?php endforeach; ?>
         </div>
 
-        <div style="margin-top:16px;">
-            <button type="button" class="button button-secondary" id="sm-add-region">+ Agregar region</button>
-        </div>
-
+        <?php if (!empty($mapping)): ?>
         <p class="submit">
             <button type="submit" class="button button-primary">Guardar configuracion</button>
         </p>
+        <?php endif; ?>
     </form>
-
-    <?php if (!empty($mapping)): ?>
-    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="margin-top:0;">
-        <?php wp_nonce_field('sm_location_seeder_nonce'); ?>
-        <input type="hidden" name="action" value="sm_run_location_seeder">
-        <button type="submit" class="button button-secondary" onclick="return confirm('Esto reemplazara la configuracion actual con los datos de Chile. Continuar?');">Recargar datos de Chile</button>
-    </form>
-    <?php endif; ?>
 </div>
 
 <style>
@@ -158,42 +173,38 @@ if (!defined('ABSPATH')) {
 .sm-comunas-table th {
     background: #f0f0f1;
 }
+.sm-comunas-table td {
+    vertical-align: middle;
+}
 </style>
 
 <script>
 (function ($) {
+    // Datos de regiones y comunas desde el plugin de WooCommerce
+    var clPlaces = <?php echo wp_json_encode($cl_places); ?>;
+    var clStates = <?php echo wp_json_encode($cl_states); ?>;
+
     var warehouseOptions = <?php
         $opts = '<option value="">-- Sin asignar --</option>';
         foreach ($warehouses as $wh) {
             $opts .= '<option value="' . esc_attr((string) $wh->term_id) . '">' . esc_html($wh->name) . '</option>';
         }
-        echo json_encode($opts);
+        echo wp_json_encode($opts);
     ?>;
-
-    function slugify(text) {
-        return text.toLowerCase()
-            .replace(/[^\w\s-]/g, '')
-            .replace(/\s+/g, '-')
-            .replace(/-+/g, '-')
-            .trim();
-    }
 
     function buildMapping() {
         var mapping = [];
         $('#sm-regions-container .sm-region-block').each(function () {
-            var $region = $(this);
-            var regionId   = $region.find('.sm-region-id').val().trim();
-            var regionName = $region.find('.sm-region-name').val().trim();
-            if (!regionName) return;
-            if (!regionId) regionId = slugify(regionName);
+            var $region    = $(this);
+            var regionId   = $region.data('region-id');
+            var regionName = $region.find('.sm-region-title').text().trim();
 
             var comunas = [];
             $region.find('.sm-comuna-row').each(function () {
-                var $row  = $(this);
-                var cname = $row.find('.sm-comuna-name').val().trim();
-                var cid   = $row.find('.sm-comuna-id').val().trim() || slugify(cname);
+                var $row = $(this);
+                var cname = $row.find('.sm-comuna-name').text().trim();
+                var cid   = $row.find('.sm-comuna-id').val().trim();
                 var cwh   = $row.find('.sm-comuna-warehouse').val();
-                if (!cname) return;
                 comunas.push({
                     id:           cid,
                     name:         cname,
@@ -206,6 +217,50 @@ if (!defined('ABSPATH')) {
         return mapping;
     }
 
+    function buildComunaRows(places) {
+        var rows = '';
+        if (!places || !places.length) return rows;
+        places.forEach(function (cityName) {
+            rows += '<tr class="sm-comuna-row">' +
+                '<td><span class="sm-comuna-name">' + $('<span>').text(cityName).html() + '</span>' +
+                    '<input type="hidden" class="sm-comuna-id" value="' + $('<span>').text(cityName).html() + '"></td>' +
+                '<td><select class="sm-comuna-warehouse">' + warehouseOptions + '</select></td>' +
+                '</tr>';
+        });
+        return rows;
+    }
+
+    function addRegionBlock(regionCode, regionName, places) {
+        var comunaRows = buildComunaRows(places);
+        var $block = $(
+            '<div class="sm-region-block" data-region-id="' + $('<span>').text(regionCode).html() + '">' +
+                '<div class="sm-region-header">' +
+                    '<span class="sm-region-toggle dashicons dashicons-arrow-down-alt2"></span>' +
+                    '<strong class="sm-region-title">' + $('<span>').text(regionName).html() + '</strong>' +
+                    '<code class="sm-region-code" style="font-size:0.85em;color:#888;font-weight:normal;">' + $('<span>').text(regionCode).html() + '</code>' +
+                    '<span class="sm-region-meta">(' + (places ? places.length : 0) + ' comunas)</span>' +
+                    '<button type="button" class="button button-small sm-remove-region" style="margin-left:auto;">Eliminar region</button>' +
+                '</div>' +
+                '<div class="sm-region-body">' +
+                    '<div class="sm-region-bulk-assign" style="margin-bottom:10px;">' +
+                        '<label>Asignar bodega a toda la region: ' +
+                            '<select class="sm-region-warehouse">' +
+                                '<option value="">-- Seleccione una bodega --</option>' +
+                                warehouseOptions +
+                            '</select>' +
+                        '</label> ' +
+                        '<button type="button" class="button button-small sm-assign-region-warehouse">Asignar a todas las comunas</button>' +
+                    '</div>' +
+                    '<table class="widefat sm-comunas-table">' +
+                        '<thead><tr><th>Comuna</th><th>Bodega asignada</th></tr></thead>' +
+                        '<tbody class="sm-comunas-body">' + comunaRows + '</tbody>' +
+                    '</table>' +
+                '</div>' +
+            '</div>'
+        );
+        $('#sm-regions-container').append($block);
+    }
+
     // Guardar JSON antes de submit
     $('#sm-location-mapping-form').on('submit', function () {
         $('#sm-mapping-json').val(JSON.stringify(buildMapping()));
@@ -213,58 +268,72 @@ if (!defined('ABSPATH')) {
 
     // Toggle collapse
     $(document).on('click', '.sm-region-header', function (e) {
-        if ($(e.target).is('button, input')) return;
+        if ($(e.target).is('button, select')) return;
         $(this).closest('.sm-region-block').toggleClass('collapsed');
     });
 
-    // Agregar region
-    $('#sm-add-region').on('click', function () {
-        var $tpl = $('<div class="sm-region-block">' +
-            '<div class="sm-region-header">' +
-                '<span class="sm-region-toggle dashicons dashicons-arrow-down-alt2"></span>' +
-                '<strong class="sm-region-title">Nueva region</strong>' +
-                '<span class="sm-region-meta">(0 comunas)</span>' +
-                '<button type="button" class="button button-small sm-remove-region" style="margin-left:auto;">Eliminar region</button>' +
-            '</div>' +
-            '<div class="sm-region-body">' +
-                '<div class="sm-region-fields" style="margin-bottom:8px;">' +
-                    '<label>ID: <input type="text" class="sm-region-id regular-text" value=""></label>' +
-                    '<label style="margin-left:16px;">Nombre: <input type="text" class="sm-region-name regular-text" value=""></label>' +
-                '</div>' +
-                '<table class="widefat sm-comunas-table"><thead><tr><th>Comuna</th><th>Bodega asignada</th><th></th></tr></thead>' +
-                '<tbody class="sm-comunas-body"></tbody></table>' +
-                '<button type="button" class="button button-small sm-add-comuna" style="margin-top:8px;">+ Agregar comuna</button>' +
-            '</div>' +
-        '</div>');
-        $('#sm-regions-container').append($tpl);
+    // Agregar region desde el selector
+    $('#sm-add-region-btn').on('click', function () {
+        var $sel       = $('#sm-region-selector');
+        var regionCode = $sel.val();
+        if (!regionCode) {
+            alert('Seleccione una region para agregar.');
+            return;
+        }
+
+        var regionName = clStates[regionCode] || regionCode;
+        var places     = clPlaces[regionCode] || [];
+
+        addRegionBlock(regionCode, regionName, places);
+
+        // Quitar la region del selector para evitar duplicados
+        $sel.find('option[value="' + regionCode + '"]').remove();
+        $sel.val('');
+
+        // Mostrar el boton de guardar si estaba oculto
+        if ($('.submit').length === 0) {
+            $('#sm-location-mapping-form').append('<p class="submit"><button type="submit" class="button button-primary">Guardar configuracion</button></p>');
+        }
     });
 
     // Eliminar region
     $(document).on('click', '.sm-remove-region', function (e) {
         e.stopPropagation();
-        if (confirm('Eliminar esta region y todas sus comunas?')) {
-            $(this).closest('.sm-region-block').remove();
+        if (!confirm('Eliminar esta region y todas sus comunas?')) return;
+
+        var $block     = $(this).closest('.sm-region-block');
+        var regionCode = $block.data('region-id');
+        var regionName = $block.find('.sm-region-title').text().trim();
+
+        $block.remove();
+
+        // Devolver la region al selector si existe en clStates
+        if (regionCode && clStates[regionCode]) {
+            $('#sm-region-selector').append(
+                $('<option>').val(regionCode).text(regionName)
+            );
         }
     });
 
-    // Agregar comuna
-    $(document).on('click', '.sm-add-comuna', function () {
-        var $tbody = $(this).siblings('.sm-comunas-table').find('.sm-comunas-body');
-        $tbody.append('<tr class="sm-comuna-row">' +
-            '<td><input type="text" class="sm-comuna-name regular-text" value=""><input type="hidden" class="sm-comuna-id" value=""></td>' +
-            '<td><select class="sm-comuna-warehouse">' + warehouseOptions + '</select></td>' +
-            '<td><button type="button" class="button button-small sm-remove-comuna">Eliminar</button></td>' +
-        '</tr>');
-    });
+    // Asignar una bodega a todas las comunas de la region
+    $(document).on('click', '.sm-assign-region-warehouse', function () {
+        var $region     = $(this).closest('.sm-region-block');
+        var warehouseId = $region.find('.sm-region-warehouse').val();
 
-    // Eliminar comuna
-    $(document).on('click', '.sm-remove-comuna', function () {
-        $(this).closest('tr').remove();
-    });
+        if (!warehouseId) {
+            alert('Seleccione una bodega para asignar.');
+            return;
+        }
 
-    // Actualizar titulo de region al escribir
-    $(document).on('input', '.sm-region-name', function () {
-        $(this).closest('.sm-region-block').find('.sm-region-title').text($(this).val() || 'Nueva region');
+        var $rows = $region.find('.sm-comuna-row');
+        if ($rows.length === 0) {
+            alert('No hay comunas en esta region.');
+            return;
+        }
+
+        if (!confirm('Asignar esta bodega a todas las comunas de la region?')) return;
+
+        $rows.find('.sm-comuna-warehouse').val(warehouseId);
     });
 
 })(jQuery);

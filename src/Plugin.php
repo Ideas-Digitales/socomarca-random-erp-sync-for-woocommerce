@@ -8,6 +8,8 @@ use Socomarca\RandomERP\Ajax\CategoryAjaxHandler;
 use Socomarca\RandomERP\Ajax\ProductAjaxHandler;
 use Socomarca\RandomERP\Ajax\PriceListAjaxHandler;
 use Socomarca\RandomERP\Ajax\BrandAjaxHandler;
+use Socomarca\RandomERP\Ajax\StockAjaxHandler;
+use Socomarca\RandomERP\Ajax\WarehouseAjaxHandler;
 use Socomarca\RandomERP\Ajax\CombinedAjaxHandler;
 use Socomarca\RandomERP\Ajax\CronSyncAjaxHandler;
 use Socomarca\RandomERP\Admin\AdminPages;
@@ -17,6 +19,7 @@ use Socomarca\RandomERP\Filters\LocationProductFilter;
 use Socomarca\RandomERP\Services\DocumentService;
 use Socomarca\RandomERP\Services\CronSyncService;
 use Socomarca\RandomERP\Shortcodes\LocationStockShortcode;
+use Socomarca\RandomERP\Compat\MultilocationBlockFix;
 
 class Plugin {
     
@@ -55,6 +58,8 @@ class Plugin {
         new ProductAjaxHandler();
         new PriceListAjaxHandler();
         new BrandAjaxHandler();
+        new WarehouseAjaxHandler();
+        new StockAjaxHandler();
         new CombinedAjaxHandler();
         new CronSyncAjaxHandler();
         
@@ -71,6 +76,7 @@ class Plugin {
 
         new LocationStockShortcode();
         new LocationProductFilter();
+        new MultilocationBlockFix();
         
         error_log('Socomarca ERP: Componentes inicializados exitosamente');
     }

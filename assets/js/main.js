@@ -80,6 +80,17 @@ jQuery(document).ready(function($) {
                         }
                         
                         $this.find('.sm_sync_result').html('<span style="color: green;">' + message + statsText + '</span>');
+                    }
+                    else if (action === 'sm_get_warehouses') {
+                        var message = response.data.message || 'Bodegas sincronizadas';
+                        var stats = response.data.stats || {};
+                        var statsText = '';
+                        
+                        if (stats.created || stats.updated) {
+                            statsText = ' (' + (stats.created || 0) + ' creadas, ' + (stats.updated || 0) + ' actualizadas)';
+                        }
+                        
+                        $this.find('.sm_sync_result').html('<span style="color: green;">' + message + statsText + '</span>');
                     } 
                     else {
                         $this.find('.sm_sync_progress').css('display', 'inline-block');
@@ -335,6 +346,87 @@ jQuery(document).ready(function($) {
         });
     }
 
+    // Sincronizacion de stock por bodega
+    $('.sm_sync_stock a').click(function() {
+        var $this = $(this).parent();
+
+        $.ajax({
+            url: socomarca_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'sm_fetch_stock',
+                nonce: socomarca_ajax.nonce
+            },
+            beforeSend: function() {
+                $this.find('a').addClass('disabled');
+                $this.find('.sm_sync_result').html('<div class="loader"></div>');
+                $this.find('.sm_sync_progress').css('display', 'none');
+            },
+            success: function(response) {
+                $this.find('a').removeClass('disabled');
+                $this.find('.sm_sync_result').html('');
+
+                if (response.success && response.data.total > 0) {
+                    $this.find('.sm_sync_progress').css('display', 'inline-block');
+                    $this.find('.sm_sync_progress_bar_text').html('0/' + response.data.total);
+                    $this.find('.sm_sync_status_report').html('[0 procesados / 0 actualizados]');
+                    processBatchStock($this, 0, response.data.total, 20);
+                } else if (response.success) {
+                    $this.find('.sm_sync_result').html('<span style="color: orange;">Sin datos de stock para procesar</span>');
+                } else {
+                    $this.find('.sm_sync_result').html('<span style="color: red;">Error: ' + (response.data ? response.data.message : 'Error desconocido') + '</span>');
+                }
+            },
+            error: function(xhr, status, error) {
+                $this.find('a').removeClass('disabled');
+                $this.find('.sm_sync_result').html('<span style="color: red;">Error al obtener stock: ' + error + '</span>');
+            }
+        });
+    });
+
+    function processBatchStock($container, offset, total, batchSize) {
+        $.ajax({
+            url: socomarca_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'sm_process_batch_stock',
+                offset: offset,
+                batch_size: batchSize,
+                nonce: socomarca_ajax.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    var processed       = response.data.processed;
+                    var totalCount      = response.data.total;
+                    var totalProcessed  = response.data.total_processed || 0;
+                    var totalUpdated    = response.data.total_updated   || 0;
+
+                    $container.find('.sm_sync_progress_bar_text').html(processed + '/' + totalCount);
+                    $container.find('.sm_sync_status_report').html('[' + totalProcessed + ' procesados / ' + totalUpdated + ' actualizados]');
+
+                    var percentage = (processed / totalCount) * 100;
+                    $container.find('.sm_sync_progress_bar_fill').css('width', percentage + '%');
+
+                    if (!response.data.is_complete) {
+                        setTimeout(function() {
+                            processBatchStock($container, processed, totalCount, batchSize);
+                        }, 300);
+                    } else {
+                        $container.find('.sm_sync_result').html('<span style="color: green;">Stock sincronizado: ' + totalProcessed + ' productos procesados, ' + totalUpdated + ' actualizados</span>');
+                        $container.find('.sm_sync_progress').css('display', 'none');
+                    }
+                } else {
+                    $container.find('.sm_sync_result').html('<span style="color: red;">Error: ' + (response.data ? response.data.message : 'Error desconocido') + '</span>');
+                    $container.find('.sm_sync_progress').css('display', 'none');
+                }
+            },
+            error: function(xhr, status, error) {
+                $container.find('.sm_sync_result').html('<span style="color: red;">Error en la peticion AJAX: ' + error + '</span>');
+                $container.find('.sm_sync_progress').css('display', 'none');
+            }
+        });
+    }
+
     // Manejar boton de eliminar usuarios
     $('#sm_delete_all_users').click(function(e) {
         e.preventDefault();
@@ -546,172 +638,212 @@ jQuery(document).ready(function($) {
             }
         });
     });
-    
-    // Manejar botón de eliminación masiva total
-    $('#sm_delete_all_data').click(function(e) {
+
+    // Manejar botón de eliminar bodegas
+    $('#sm_delete_all_warehouses').click(function(e) {
         e.preventDefault();
         
-        // Confirmación triple para máxima seguridad
-        var confirmation1 = confirm('🚨 MÁXIMO PELIGRO: ¿Estás seguro de que quieres ELIMINAR TODO?\n\n• TODOS los productos de WooCommerce\n• TODAS las categorías\n• TODOS los usuarios (excepto administradores)\n\nEsta acción NO SE PUEDE DESHACER.');
+        var confirmation1 = confirm('⚠️ PELIGRO: ¿Estás seguro de que quieres ELIMINAR TODAS LAS BODEGAS de la taxonomía locations?\n\nEsta acción NO SE PUEDE DESHACER.');
         
         if (!confirmation1) {
             return;
         }
         
-        var confirmation2 = confirm('⚠️ ÚLTIMA ADVERTENCIA: Esta acción eliminará permanentemente:\n\n✗ Productos\n✗ Categorías\n✗ Usuarios\n\n¿Estás COMPLETAMENTE SEGURO?');
+        var confirmation2 = prompt('Para confirmar, escribe exactamente: DELETE_ALL_WAREHOUSES');
         
-        if (!confirmation2) {
+        if (confirmation2 !== 'DELETE_ALL_WAREHOUSES') {
+            alert('Confirmación incorrecta. Operación cancelada.');
             return;
         }
         
-        var confirmText = prompt('Para confirmar, escribe exactamente: DELETE_ALL_DATA');
+        var $button = $(this);
+        var $result = $('#sm_delete_warehouses_result');
+        
+        $.ajax({
+            url: socomarca_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'sm_delete_all_warehouses',
+                confirm: 'DELETE_ALL_WAREHOUSES'
+            },
+            beforeSend: function() {
+                $button.addClass('disabled').text('Eliminando bodegas...');
+                $result.html('<div class="loader"></div>');
+            },
+            success: function(response) {
+                console.log('Respuesta eliminación bodegas:', response);
+                $button.removeClass('disabled').text('Eliminar todas las bodegas');
+                
+                if (response.success) {
+                    $result.html('<span style="color: green;">✓ ' + response.data.message + '</span>');
+                    if (response.data.errors && response.data.errors.length > 0) {
+                        $result.append('<br><span style="color: orange;">Errores: ' + response.data.errors.join(', ') + '</span>');
+                    }
+                } else {
+                    $result.html('<span style="color: red;">✗ Error: ' + response.data.message + '</span>');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error AJAX eliminación bodegas:', xhr, status, error);
+                $button.removeClass('disabled').text('Eliminar todas las bodegas');
+                $result.html('<span style="color: red;">✗ Error en la petición: ' + error + '</span>');
+            }
+        });
+    });
+    
+    // Manejar boton de eliminacion masiva total
+    var BTN_DELETE_ALL_LABEL = 'ELIMINAR TODO';
+
+    $('#sm_delete_all_data').click(function(e) {
+        e.preventDefault();
+
+        var confirmation1 = confirm(
+            'PELIGRO: Esta accion eliminara permanentemente:\n\n' +
+            '  - Todos los productos (y sus variaciones)\n' +
+            '  - Todas las categorias\n' +
+            '  - Todas las marcas\n' +
+            '  - Todas las bodegas (taxonomy locations)\n' +
+            '  - Todos los grupos de lista de precios B2B King\n' +
+            '  - Todos los usuarios (excepto administradores)\n\n' +
+            'Esta accion NO SE PUEDE DESHACER.'
+        );
+
+        if (!confirmation1) return;
+
+        var confirmation2 = confirm(
+            'ULTIMA ADVERTENCIA\n\n' +
+            'Se borrara TODO el contenido sincronizado desde el ERP:\n' +
+            'productos, categorias, marcas, bodegas, precios B2B y usuarios.\n\n' +
+            'Estas completamente seguro?'
+        );
+
+        if (!confirmation2) return;
+
+        var confirmText = prompt('Para confirmar escribe exactamente: DELETE_ALL_DATA');
         if (confirmText !== 'DELETE_ALL_DATA') {
-            alert('Texto de confirmación incorrecto. Operación cancelada.');
+            alert('Texto de confirmacion incorrecto. Operacion cancelada.');
             return;
         }
-        
+
         var $button = $(this);
         var $result = $('#sm_delete_all_data_result');
         var $progress = $('.sm_delete_all_data_progress');
         var $progressBar = $progress.find('.sm_sync_progress_bar_fill');
         var $progressText = $progress.find('.sm_sync_progress_bar_text');
         var $statusReport = $progress.find('.sm_delete_status_report');
-        
+
         $.ajax({
             url: socomarca_ajax.ajax_url,
             type: 'POST',
-            data: {
-                action: 'sm_delete_all_data',
-                confirm: 'DELETE_ALL_DATA'
-            },
+            data: { action: 'sm_delete_all_data', confirm: 'DELETE_ALL_DATA' },
             beforeSend: function() {
-                $button.addClass('disabled').text('🔄 Inicializando...');
-                $result.html('<div class="loader"></div><span style="margin-left: 10px; color: orange;">Preparando eliminación masiva...</span>');
+                $button.addClass('disabled').text('Inicializando...');
+                $result.html('<div class="loader"></div><span style="margin-left:10px;color:orange;">Preparando eliminacion masiva...</span>');
                 $progress.hide();
             },
             success: function(response) {
-                console.log('Respuesta inicialización eliminación masiva:', response);
-                
                 if (response.success) {
-                    // Initialize progress bar
-                    var totalItems = response.data.total_items;
-                    var productsTotal = response.data.products_total;
-                    var categoriesTotal = response.data.categories_total;
-                    var usersTotal = response.data.users_total;
-                    
-                    $result.html('<span style="color: blue;">📊 ' + response.data.message + '</span>');
+                    var d = response.data;
+                    $result.html('<span style="color:blue;">' + d.message + '</span>');
                     $progress.show();
-                    $progressText.text('0/' + totalItems);
+                    $progressText.text('0/' + d.total_items);
                     $progressBar.css('width', '0%');
-                    $statusReport.text(`[Productos: 0/${productsTotal} | Categorías: 0/${categoriesTotal} | Usuarios: 0/${usersTotal}]`);
-                    
-                    // Start batch processing
-                    deleteBatchData(totalItems, productsTotal, categoriesTotal, usersTotal, 0, 0, 0);
+                    $statusReport.text(buildStatusText(d.total_items, 0, 0, 0, 0, 0, 0,
+                        d.products_total, d.categories_total, d.brands_total,
+                        d.warehouses_total, d.b2bking_total, d.users_total));
+                    deleteBatchData(d.total_items, d.products_total, d.categories_total,
+                        d.brands_total, d.warehouses_total, d.b2bking_total, d.users_total,
+                        0, 0, 0, 0, 0, 0);
                 } else {
-                    $button.removeClass('disabled').text('🗑️ ELIMINAR TODO (Productos + Categorías + Usuarios)');
-                    $result.html('<span style="color: red;">❌ Error: ' + response.data.message + '</span>');
+                    $button.removeClass('disabled').text(BTN_DELETE_ALL_LABEL);
+                    $result.html('<span style="color:red;">Error: ' + response.data.message + '</span>');
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Error AJAX inicialización eliminación masiva:', xhr, status, error);
-                $button.removeClass('disabled').text('🗑️ ELIMINAR TODO (Productos + Categorías + Usuarios)');
-                $result.html('<span style="color: red;">❌ Error en la petición: ' + error + '</span>');
+                $button.removeClass('disabled').text(BTN_DELETE_ALL_LABEL);
+                $result.html('<span style="color:red;">Error en la peticion: ' + error + '</span>');
             }
         });
     });
-    
-    function deleteBatchData(totalItems, productsTotal, categoriesTotal, usersTotal, productsDeleted, categoriesDeleted, usersDeleted) {
+
+    function buildStatusText(totalItems, pd, cd, bd, wd, b2bd, ud, pt, ct, bt, wt, b2bt, ut) {
+        return '[Productos: ' + pd + '/' + pt +
+               ' | Categorias: ' + cd + '/' + ct +
+               ' | Marcas: ' + bd + '/' + bt +
+               ' | Bodegas: ' + wd + '/' + wt +
+               ' | B2B King: ' + b2bd + '/' + b2bt +
+               ' | Usuarios: ' + ud + '/' + ut + ']';
+    }
+
+    function deleteBatchData(totalItems, pt, ct, bt, wt, b2bt, ut, pd, cd, bd, wd, b2bd, ud) {
         var $button = $('#sm_delete_all_data');
         var $result = $('#sm_delete_all_data_result');
         var $progress = $('.sm_delete_all_data_progress');
         var $progressBar = $progress.find('.sm_sync_progress_bar_fill');
         var $progressText = $progress.find('.sm_sync_progress_bar_text');
         var $statusReport = $progress.find('.sm_delete_status_report');
-        
-        var totalDeleted = productsDeleted + categoriesDeleted + usersDeleted;
-        
+
+        var phaseLabels = {
+            products:   'productos',
+            categories: 'categorias',
+            brands:     'marcas',
+            warehouses: 'bodegas',
+            b2bking:    'grupos B2B King',
+            users:      'usuarios'
+        };
+
         $.ajax({
             url: socomarca_ajax.ajax_url,
             type: 'POST',
-            data: {
-                action: 'sm_delete_batch_data'
-            },
+            data: { action: 'sm_delete_batch_data' },
             success: function(response) {
-                console.log('Respuesta lote eliminación:', response);
-                
                 if (response.success) {
                     var data = response.data;
-                    var newTotalDeleted = data.total_deleted;
-                    var phaseComplete = data.phase_complete;
-                    var allComplete = data.all_complete;
-                    
-                    // Update progress bar
-                    var progressPercent = (newTotalDeleted / totalItems) * 100;
+                    var newPd = pd, newCd = cd, newBd = bd, newWd = wd, newB2bd = b2bd, newUd = ud;
+
+                    if (data.phase === 'products')    newPd   = Math.min(pt,   pd   + data.deleted_this_batch);
+                    if (data.phase === 'categories')  newCd   = Math.min(ct,   cd   + data.deleted_this_batch);
+                    if (data.phase === 'brands')      newBd   = Math.min(bt,   bd   + data.deleted_this_batch);
+                    if (data.phase === 'warehouses')  newWd   = Math.min(wt,   wd   + data.deleted_this_batch);
+                    if (data.phase === 'b2bking')     newB2bd = Math.min(b2bt, b2bd + data.deleted_this_batch);
+                    if (data.phase === 'users')       newUd   = Math.min(ut,   ud   + data.deleted_this_batch);
+
+                    var progressPercent = (data.total_deleted / totalItems) * 100;
                     $progressBar.css('width', progressPercent + '%');
-                    $progressText.text(newTotalDeleted + '/' + totalItems);
-                    
-                    // Update status based on phase
-                    var currentProductsDeleted = productsDeleted;
-                    var currentCategoriesDeleted = categoriesDeleted;
-                    var currentUsersDeleted = usersDeleted;
-                    
-                    if (data.phase === 'products') {
-                        currentProductsDeleted = Math.min(productsTotal, productsDeleted + data.deleted_this_batch);
-                    } else if (data.phase === 'categories') {
-                        currentProductsDeleted = productsTotal; // Products phase already complete
-                        currentCategoriesDeleted = Math.min(categoriesTotal, categoriesDeleted + data.deleted_this_batch);
-                    } else if (data.phase === 'users') {
-                        currentProductsDeleted = productsTotal; // Products phase complete
-                        currentCategoriesDeleted = categoriesTotal; // Categories phase complete
-                        currentUsersDeleted = Math.min(usersTotal, usersDeleted + data.deleted_this_batch);
-                    }
-                    
-                    $statusReport.text(`[Productos: ${currentProductsDeleted}/${productsTotal} | Categorías: ${currentCategoriesDeleted}/${categoriesTotal} | Usuarios: ${currentUsersDeleted}/${usersTotal}]`);
-                    
-                    // Update status message
-                    var phaseText = data.phase === 'products' ? 'productos' : 
-                                   data.phase === 'categories' ? 'categorías' : 'usuarios';
-                    $result.html('<span style="color: orange;">🔄 Eliminando ' + phaseText + '... ' + data.message + '</span>');
-                    
-                    if (allComplete) {
-                        // Process complete
-                        $button.removeClass('disabled').text('🗑️ ELIMINAR TODO (Productos + Categorías + Usuarios)');
-                        
+                    $progressText.text(data.total_deleted + '/' + totalItems);
+                    $statusReport.text(buildStatusText(totalItems, newPd, newCd, newBd, newWd, newB2bd, newUd, pt, ct, bt, wt, b2bt, ut));
+                    $result.html('<span style="color:orange;">Eliminando ' + (phaseLabels[data.phase] || data.phase) + '... ' + data.message + '</span>');
+
+                    if (data.all_complete) {
+                        $button.removeClass('disabled').text(BTN_DELETE_ALL_LABEL);
                         if (data.final_summary) {
-                            var summary = data.final_summary;
-                            var finalMsg = '✅ ' + data.message + 
-                                         '<br><small style="color: #666;">Detalles: ' + 
-                                         summary.products_deleted + ' productos, ' + 
-                                         summary.categories_deleted + ' categorías, ' + 
-                                         summary.users_deleted + ' usuarios eliminados</small>';
-                            $result.html('<span style="color: green;">' + finalMsg + '</span>');
+                            var s = data.final_summary;
+                            $result.html('<span style="color:green;">' + data.message +
+                                '<br><small style="color:#666;">Productos: ' + s.products_deleted +
+                                ' | Categorias: ' + s.categories_deleted +
+                                ' | Marcas: ' + s.brands_deleted +
+                                ' | Bodegas: ' + s.warehouses_deleted +
+                                ' | B2B King: ' + (s.b2bking_deleted || 0) +
+                                ' | Usuarios: ' + s.users_deleted + '</small></span>');
                         }
-                        
                         if (data.errors && data.errors.length > 0) {
-                            $result.append('<br><span style="color: orange;">⚠️ Errores: ' + data.errors.join(' | ') + '</span>');
+                            $result.append('<br><span style="color:orange;">Errores: ' + data.errors.join(' | ') + '</span>');
                         }
-                        
-                        // Hide progress bar after completion
-                        setTimeout(function() {
-                            $progress.fadeOut();
-                        }, 3000);
+                        setTimeout(function() { $progress.fadeOut(); }, 3000);
                     } else {
-                        // Continue with next batch after short delay
                         setTimeout(function() {
-                            deleteBatchData(totalItems, productsTotal, categoriesTotal, usersTotal, 
-                                          currentProductsDeleted, currentCategoriesDeleted, currentUsersDeleted);
+                            deleteBatchData(totalItems, pt, ct, bt, wt, b2bt, ut, newPd, newCd, newBd, newWd, newB2bd, newUd);
                         }, 500);
                     }
                 } else {
-                    $button.removeClass('disabled').text('🗑️ ELIMINAR TODO (Productos + Categorías + Usuarios)');
-                    $result.html('<span style="color: red;">❌ Error en lote: ' + response.data.message + '</span>');
+                    $button.removeClass('disabled').text(BTN_DELETE_ALL_LABEL);
+                    $result.html('<span style="color:red;">Error en lote: ' + response.data.message + '</span>');
                     $progress.hide();
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Error AJAX lote eliminación:', xhr, status, error);
-                $button.removeClass('disabled').text('🗑️ ELIMINAR TODO (Productos + Categorías + Usuarios)');
-                $result.html('<span style="color: red;">❌ Error en la petición: ' + error + '</span>');
+                $button.removeClass('disabled').text(BTN_DELETE_ALL_LABEL);
+                $result.html('<span style="color:red;">Error en la peticion: ' + error + '</span>');
                 $progress.hide();
             }
         });
