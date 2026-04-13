@@ -13,6 +13,7 @@ use Socomarca\RandomERP\Ajax\WarehouseAjaxHandler;
 use Socomarca\RandomERP\Ajax\CombinedAjaxHandler;
 use Socomarca\RandomERP\Ajax\CronSyncAjaxHandler;
 use Socomarca\RandomERP\Admin\AdminPages;
+use Socomarca\RandomERP\Admin\CategoryTaxonomyAdmin;
 use Socomarca\RandomERP\Admin\LocationMappingAdmin;
 use Socomarca\RandomERP\Ajax\LocationMappingAjaxHandler;
 use Socomarca\RandomERP\Filters\LocationProductFilter;
@@ -69,6 +70,7 @@ class Plugin {
         
         
         new AdminPages();
+        new CategoryTaxonomyAdmin();
         new LocationMappingAdmin();
         new LocationMappingAjaxHandler();
 

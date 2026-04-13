@@ -71,7 +71,7 @@ class CategoryService extends BaseApiService {
         $wc_categories = get_terms([
             'taxonomy' => 'product_cat',
             'hide_empty' => false,
-            'count' => true
+            'fields' => 'ids',
         ]);
         $total_wc_categories = is_wp_error($wc_categories) ? 0 : count($wc_categories);
         
@@ -91,15 +91,31 @@ class CategoryService extends BaseApiService {
         ];
     }
     
+    private function findTermByErpKey($llave) {
+        $terms = get_terms([
+            'taxonomy'   => 'product_cat',
+            'hide_empty' => false,
+            'number'     => 1,
+            'meta_query' => [
+                [
+                    'key'     => 'erp_key',
+                    'value'   => $llave,
+                    'compare' => '=',
+                ],
+            ],
+        ]);
+        return (!empty($terms) && !is_wp_error($terms)) ? $terms[0] : null;
+    }
+
     private function processLevelOneCategory($category) {
         $term_data = [
-            'name' => $category['NOMBRE'],
-            'slug' => sanitize_title($category['CODIGO']),
-            'description' => ''
+            'name'        => $category['NOMBRE'],
+            'slug'        => sanitize_title($category['NOMBRE']),
+            'description' => '',
         ];
-        
-        $existing_term = get_term_by('slug', $term_data['slug'], 'product_cat');
-        
+
+        $existing_term = $this->findTermByErpKey($category['LLAVE']);
+
         if ($existing_term) {
             $result = wp_update_term($existing_term->term_id, 'product_cat', $term_data);
             if (!is_wp_error($result)) {
@@ -118,55 +134,38 @@ class CategoryService extends BaseApiService {
             }
         }
     }
-    
+
     private function processSubCategory($category, $nivel) {
-        $parent_key_parts = explode("/", $category['LLAVE']);
-        
-        
-        
+        $parent_key_parts = explode('/', $category['LLAVE']);
+
         if ($nivel == 2) {
-            $parent_code = $parent_key_parts[0];
-        } else { 
-            $parent_code = isset($parent_key_parts[1]) ? $parent_key_parts[1] : $parent_key_parts[0];
+            $parent_llave = $parent_key_parts[0];
+        } else {
+            $parent_llave = $parent_key_parts[0] . '/' . $parent_key_parts[1];
         }
-        
-        
-        
-        $parent_term = get_terms([
-            'taxonomy' => 'product_cat',
-            'meta_query' => [
-                [
-                    'key' => 'erp_code',
-                    'value' => $parent_code,
-                    'compare' => '='
-                ]
-            ],
-            'hide_empty' => false,
-            'number' => 1
-        ]);
-        
-        if (empty($parent_term)) {
-            return ['success' => false, 'error' => "No se encontró categoría padre '$parent_code' para {$category['CODIGO']} (LLAVE: {$category['LLAVE']})"];
+
+        $parent_term = $this->findTermByErpKey($parent_llave);
+
+        if (!$parent_term) {
+            return ['success' => false, 'error' => "No se encontro categoria padre '$parent_llave' para {$category['CODIGO']} (LLAVE: {$category['LLAVE']})"];
         }
-        
-        $parent_id = $parent_term[0]->term_id;
-        
+
         $term_data = [
-            'name' => $category['NOMBRE'],
-            'slug' => sanitize_title($category['CODIGO']),
-            'parent' => $parent_id,
-            'description' => ''
+            'name'        => $category['NOMBRE'],
+            'slug'        => sanitize_title($category['NOMBRE']),
+            'parent'      => $parent_term->term_id,
+            'description' => '',
         ];
-        
-        $existing_term = get_term_by('slug', $term_data['slug'], 'product_cat');
-        
+
+        $existing_term = $this->findTermByErpKey($category['LLAVE']);
+
         if ($existing_term) {
             $result = wp_update_term($existing_term->term_id, 'product_cat', $term_data);
             if (!is_wp_error($result)) {
                 $this->saveTermMeta($existing_term->term_id, $category);
                 return ['success' => true, 'action' => 'updated'];
             } else {
-                return ['success' => false, 'error' => 'Error actualizando subcategoría ' . $category['CODIGO'] . ': ' . $result->get_error_message()];
+                return ['success' => false, 'error' => 'Error actualizando subcategoria ' . $category['CODIGO'] . ': ' . $result->get_error_message()];
             }
         } else {
             $result = wp_insert_term($term_data['name'], 'product_cat', $term_data);
@@ -174,7 +173,7 @@ class CategoryService extends BaseApiService {
                 $this->saveTermMeta($result['term_id'], $category);
                 return ['success' => true, 'action' => 'created'];
             } else {
-                return ['success' => false, 'error' => 'Error creando subcategoría ' . $category['CODIGO'] . ': ' . $result->get_error_message()];
+                return ['success' => false, 'error' => 'Error creando subcategoria ' . $category['CODIGO'] . ': ' . $result->get_error_message()];
             }
         }
     }
