@@ -16,6 +16,7 @@ use Socomarca\RandomERP\Admin\AdminPages;
 use Socomarca\RandomERP\Admin\CategoryTaxonomyAdmin;
 use Socomarca\RandomERP\Admin\LocationMappingAdmin;
 use Socomarca\RandomERP\Ajax\LocationMappingAjaxHandler;
+use Socomarca\RandomERP\Filters\CheckoutShippingFilter;
 use Socomarca\RandomERP\Filters\LocationProductFilter;
 use Socomarca\RandomERP\Services\DocumentService;
 use Socomarca\RandomERP\Services\CronSyncService;
@@ -78,6 +79,7 @@ class Plugin {
 
         new LocationStockShortcode();
         new LocationProductFilter();
+        new CheckoutShippingFilter();
         new MultilocationBlockFix();
         
         error_log('Socomarca ERP: Componentes inicializados exitosamente');
