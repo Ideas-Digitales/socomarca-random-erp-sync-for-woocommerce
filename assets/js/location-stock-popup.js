@@ -165,35 +165,116 @@
 
             if (!comunaId) return;
 
-            // Guardar seleccion en cookie para mostrar en el boton y para filtrar el loop
+            // Leer bodega actual del cookie antes de sobreescribirlo
+            var prevCookie       = SmLocationPopup.parseCookie();
+            var prevWarehouseId  = prevCookie ? parseInt(prevCookie.warehouse_id, 10) : null;
+            var newWarehouseId   = warehouseId ? parseInt(warehouseId, 10) : null;
+            var warehouseChanged = newWarehouseId && newWarehouseId !== prevWarehouseId;
+
+            // Guardar nueva seleccion en cookie
             var cookieData = JSON.stringify({
                 region_id:    regionId,
                 region_name:  regionName,
                 comuna_id:    comunaId,
                 comuna_name:  comunaName,
-                warehouse_id: warehouseId ? parseInt(warehouseId, 10) : null,
+                warehouse_id: newWarehouseId,
             });
             document.cookie = 'sm_selected_location=' + encodeURIComponent(cookieData) + '; path=/; max-age=2592000';
 
-            if (warehouseId) {
-                // Pasar bodega a multiloca y recargar
+            SmLocationPopup.closeModal();
+
+            var doReload = function () {
+                if (warehouseId) {
+                    $.ajax({
+                        url:  sm_location_popup.ajax_url,
+                        type: 'POST',
+                        data: {
+                            action:        'select_location',
+                            location_id:   warehouseId,
+                            location_name: comunaName,
+                            nonce:         sm_location_popup.multiloca_nonce,
+                        },
+                        complete: function () {
+                            window.location.reload();
+                        },
+                    });
+                } else {
+                    window.location.reload();
+                }
+            };
+
+            if (warehouseChanged) {
+                // Verificar stock del carrito en la nueva bodega antes de recargar
                 $.ajax({
                     url:  sm_location_popup.ajax_url,
                     type: 'POST',
                     data: {
-                        action:        'select_location',
-                        location_id:   warehouseId,
-                        location_name: comunaName,
-                        nonce:         sm_location_popup.multiloca_nonce,
+                        action:       'sm_switch_warehouse_cart',
+                        nonce:        sm_location_popup.popup_nonce,
+                        warehouse_id: newWarehouseId,
                     },
-                    complete: function () {
-                        window.location.reload();
+                    success: function (response) {
+                        if (response.success && response.data.cleared) {
+                            SmLocationPopup.renderCartSwitchToasts(response.data.items);
+                            // Dar tiempo al usuario de leer los toasts antes de recargar
+                            setTimeout(doReload, 2200);
+                        } else {
+                            doReload();
+                        }
+                    },
+                    error: function () {
+                        doReload();
                     },
                 });
             } else {
-                // Sin bodega asignada, solo actualizar el display
-                window.location.reload();
+                doReload();
             }
+        },
+
+        renderCartSwitchToasts: function (items) {
+            if (!items || items.length === 0) return;
+
+            var $container = $('<div class="sm-toast-container"></div>');
+            $('body').append($container);
+
+            $.each(items, function (i, item) {
+                var icon, text;
+                if (item.type === 'success') {
+                    icon = '&#10003;';
+                    text = item.product_name + ': agregado al carrito (' + item.quantity + ' unid.)';
+                } else if (item.type === 'warning') {
+                    icon = '&#9888;';
+                    text = item.product_name + ': solo ' + item.quantity + ' unid. disponibles en esta bodega (pedias ' + item.requested + ')';
+                } else {
+                    icon = '&#10007;';
+                    text = item.product_name + ': sin stock en esta bodega, eliminado del carrito';
+                }
+
+                var $toast = $(
+                    '<div class="sm-toast sm-toast-' + item.type + '">' +
+                    '<span class="sm-toast-icon">' + icon + '</span>' +
+                    '<span>' + text + '</span>' +
+                    '</div>'
+                );
+                $container.append($toast);
+            });
+
+            setTimeout(function () {
+                $container.fadeOut(400, function () { $(this).remove(); });
+            }, 2000);
+        },
+
+        parseCookie: function () {
+            var raw = document.cookie.split('; ').reduce(function (acc, part) {
+                var idx = part.indexOf('=');
+                var key = part.substring(0, idx);
+                if (key === 'sm_selected_location') {
+                    acc = part.substring(idx + 1);
+                }
+                return acc;
+            }, null);
+            if (!raw) return null;
+            try { return JSON.parse(decodeURIComponent(raw)); } catch (e) { return null; }
         },
     };
 

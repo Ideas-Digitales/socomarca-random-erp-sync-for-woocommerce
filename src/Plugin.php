@@ -10,6 +10,7 @@ use Socomarca\RandomERP\Ajax\PriceListAjaxHandler;
 use Socomarca\RandomERP\Ajax\BrandAjaxHandler;
 use Socomarca\RandomERP\Ajax\StockAjaxHandler;
 use Socomarca\RandomERP\Ajax\WarehouseAjaxHandler;
+use Socomarca\RandomERP\Ajax\CartWarehouseSwitchHandler;
 use Socomarca\RandomERP\Ajax\CombinedAjaxHandler;
 use Socomarca\RandomERP\Ajax\CronSyncAjaxHandler;
 use Socomarca\RandomERP\Admin\AdminPages;
@@ -63,6 +64,7 @@ class Plugin {
         new WarehouseAjaxHandler();
         new StockAjaxHandler();
         new CombinedAjaxHandler();
+        new CartWarehouseSwitchHandler();
         new CronSyncAjaxHandler();
         
         // Inicializar el servicio de cron
