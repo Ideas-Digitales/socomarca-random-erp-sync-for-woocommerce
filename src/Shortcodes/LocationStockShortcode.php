@@ -27,6 +27,13 @@ class LocationStockShortcode {
             SOCOMARCA_ERP_VERSION
         );
 
+        wp_enqueue_style(
+            'theme-overrides',
+            SOCOMARCA_ERP_PLUGIN_URL . 'assets/css/theme.css',
+            [],
+            SOCOMARCA_ERP_VERSION
+        );
+
         wp_enqueue_script(
             'sm-location-popup',
             SOCOMARCA_ERP_PLUGIN_URL . 'assets/js/location-stock-popup.js',
@@ -35,14 +42,29 @@ class LocationStockShortcode {
             true
         );
 
+        if (is_product()) {
+            wp_enqueue_script(
+                'sm-variations-helper',
+                SOCOMARCA_ERP_PLUGIN_URL . 'assets/js/variations-helper.js',
+                ['jquery', 'wc-add-to-cart-variation'],
+                SOCOMARCA_ERP_VERSION,
+                true
+            );
+        }
+
         $display = $this->getSelectedLocationDisplay();
 
+        $multiloca_location_id = isset($_SESSION['multiloca_selected_location_id'])
+            ? (int) $_SESSION['multiloca_selected_location_id']
+            : ($display['warehouse_id'] ?? 0);
+
         wp_localize_script('sm-location-popup', 'sm_location_popup', [
-            'ajax_url'        => admin_url('admin-ajax.php'),
-            'multiloca_nonce' => wp_create_nonce('multiloca_lite_nonce'),
-            'popup_nonce'     => wp_create_nonce('sm_location_popup_nonce'),
-            'selected_region' => $display['region_id'] ?? '',
-            'selected_comuna' => $display['comuna_id'] ?? '',
+            'ajax_url'             => admin_url('admin-ajax.php'),
+            'multiloca_nonce'      => wp_create_nonce('multiloca_lite_nonce'),
+            'popup_nonce'          => wp_create_nonce('sm_location_popup_nonce'),
+            'selected_region'      => $display['region_id'] ?? '',
+            'selected_comuna'      => $display['comuna_id'] ?? '',
+            'selected_warehouse_id' => $multiloca_location_id,
         ]);
     }
 

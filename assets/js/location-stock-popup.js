@@ -55,6 +55,8 @@
                 SmLocationPopup.selectedComunaName  = comunaName;
                 SmLocationPopup.selectedWarehouseId = warehouseId || null;
 
+                console.log('[SM] comuna change', { comunaId: comunaId, warehouseId: warehouseId, selectedWarehouseId: SmLocationPopup.selectedWarehouseId });
+
                 if (comunaId) {
                     $('.sm-location-confirm').prop('disabled', false);
                 } else {
@@ -171,6 +173,14 @@
             var newWarehouseId   = warehouseId ? parseInt(warehouseId, 10) : null;
             var warehouseChanged = newWarehouseId && newWarehouseId !== prevWarehouseId;
 
+            console.log('[SM] confirmSelection', {
+                warehouseId:     warehouseId,
+                newWarehouseId:  newWarehouseId,
+                prevWarehouseId: prevWarehouseId,
+                warehouseChanged: warehouseChanged,
+                prevCookie:      prevCookie,
+            });
+
             // Guardar nueva seleccion en cookie
             var cookieData = JSON.stringify({
                 region_id:    regionId,
@@ -183,7 +193,44 @@
 
             SmLocationPopup.closeModal();
 
+            var showReloadOverlay = function () {
+                var $overlay = $(
+                    '<div id="sm-reload-overlay" style="' +
+                        'position:fixed;top:0;left:0;width:100%;height:100%;' +
+                        'background:rgba(0,0,0,0.55);z-index:999999;' +
+                        'display:flex;align-items:center;justify-content:center;' +
+                    '">' +
+                        '<div style="' +
+                            'background:#fff;border-radius:8px;padding:32px 48px;' +
+                            'text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.2);' +
+                        '">' +
+                            '<div style="' +
+                                'width:36px;height:36px;border:4px solid #e0e0e0;' +
+                                'border-top-color:#333;border-radius:50%;' +
+                                'animation:sm-spin 0.7s linear infinite;margin:0 auto 16px;' +
+                            '"></div>' +
+                            '<p style="margin:0;font-size:15px;color:#333;font-weight:500;">Cargando...</p>' +
+                        '</div>' +
+                    '</div>'
+                );
+                if (!$('#sm-reload-overlay').length) {
+                    $('body').append($overlay);
+                }
+                if (!$('#sm-spin-style').length) {
+                    $('head').append(
+                        '<style id="sm-spin-style">' +
+                        '@keyframes sm-spin{to{transform:rotate(360deg)}}' +
+                        '</style>'
+                    );
+                }
+            };
+
             var doReload = function () {
+                showReloadOverlay();
+                // WooCommerce agrega un beforeunload en el checkout que muestra "Leave site?".
+                // Lo removemos para que la recarga sea inmediata y sin dialogo.
+                $(window).off('beforeunload');
+
                 if (warehouseId) {
                     $.ajax({
                         url:  sm_location_popup.ajax_url,

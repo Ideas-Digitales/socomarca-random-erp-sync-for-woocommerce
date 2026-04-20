@@ -14,11 +14,15 @@ if (!defined('ABSPATH')) {
 class CheckoutShippingFilter {
 
     public function __construct() {
-        // Inyecta la ubicacion en WC_Customer SIEMPRE que haya cookie.
-        // Esto es necesario para bypasear woocommerce_shipping_cost_requires_address.
+        // Inyecta la ubicacion en WC_Customer — tanto en campos de envio como de facturacion.
+        // WooCommerce usa billing como shipping cuando "enviar a direccion diferente" esta desmarcado,
+        // por lo que ambos conjuntos de getters deben reflejar la bodega seleccionada.
         add_filter('woocommerce_customer_get_shipping_country', [$this, 'filterCustomerCountry']);
         add_filter('woocommerce_customer_get_shipping_state',   [$this, 'filterCustomerState']);
         add_filter('woocommerce_customer_get_shipping_city',    [$this, 'filterCustomerCity']);
+        add_filter('woocommerce_customer_get_billing_country',  [$this, 'filterCustomerCountry']);
+        add_filter('woocommerce_customer_get_billing_state',    [$this, 'filterCustomerState']);
+        add_filter('woocommerce_customer_get_billing_city',     [$this, 'filterCustomerCity']);
 
         // Override del paquete de calculo.
         add_filter('woocommerce_cart_shipping_packages', [$this, 'overridePackageDestination']);
@@ -29,6 +33,11 @@ class CheckoutShippingFilter {
 
         // Agrega inputs ocultos para que los selects deshabilitados se envien igual.
         add_action('woocommerce_checkout_after_customer_details', [$this, 'outputHiddenFields']);
+
+        // Sincroniza la sesion WC con el cookie durante el refresco AJAX del checkout.
+        // Necesario para que el calculo de metodos de envio use la bodega correcta
+        // incluso cuando WC tiene datos anteriores en sesion.
+        add_action('woocommerce_checkout_update_order_review', [$this, 'updateSessionFromCookie']);
 
         // Bloquea los Select2 via JS (el plugin de estados los reinicializa y borra disabled).
         add_action('wp_footer', [$this, 'outputLockScript']);
@@ -76,36 +85,34 @@ class CheckoutShippingFilter {
     // Formulario de checkout
     // -------------------------------------------------------------------------
 
-    /**
-     * Bloquea los campos de region y ciudad para que el usuario no pueda
-     * cambiar la ubicacion en el checkout (debe hacerlo desde el modal).
-     */
     public function lockCheckoutFields(array $fields): array {
         $location = $this->getSelectedLocation();
         if (empty($location)) {
             return $fields;
         }
 
-        if (isset($fields['shipping']['shipping_state'])) {
-            $fields['shipping']['shipping_state']['custom_attributes']['disabled'] = 'disabled';
-            $fields['shipping']['shipping_state']['description'] = 'Segun la bodega seleccionada.';
+        $lock_shipping = ['shipping_state', 'shipping_city', 'shipping_country'];
+        $lock_billing  = ['billing_state',  'billing_city',  'billing_country'];
+
+        foreach ($lock_shipping as $key) {
+            if (!isset($fields['shipping'][$key])) continue;
+            $fields['shipping'][$key]['custom_attributes']['disabled'] = 'disabled';
+            if ($key !== 'shipping_country') {
+                $fields['shipping'][$key]['description'] = 'Segun la bodega seleccionada.';
+            }
         }
 
-        if (isset($fields['shipping']['shipping_city'])) {
-            $fields['shipping']['shipping_city']['custom_attributes']['disabled'] = 'disabled';
-            $fields['shipping']['shipping_city']['description'] = 'Segun la bodega seleccionada.';
-        }
-
-        if (isset($fields['shipping']['shipping_country'])) {
-            $fields['shipping']['shipping_country']['custom_attributes']['disabled'] = 'disabled';
+        foreach ($lock_billing as $key) {
+            if (!isset($fields['billing'][$key])) continue;
+            $fields['billing'][$key]['custom_attributes']['disabled'] = 'disabled';
+            if ($key !== 'billing_country') {
+                $fields['billing'][$key]['description'] = 'Segun la bodega seleccionada.';
+            }
         }
 
         return $fields;
     }
 
-    /**
-     * Pre-rellena los campos de envio con los valores del cookie.
-     */
     public function prefillCheckoutFields($value, string $input) {
         $location = $this->getSelectedLocation();
         if (empty($location)) {
@@ -114,30 +121,49 @@ class CheckoutShippingFilter {
 
         switch ($input) {
             case 'shipping_country':
+            case 'billing_country':
                 return 'CL';
             case 'shipping_state':
+            case 'billing_state':
                 return $location['region_id'];
             case 'shipping_city':
+            case 'billing_city':
                 return $location['comuna_name'];
         }
 
         return $value;
     }
 
-    /**
-     * Los campos con disabled no se envian en el POST. Agrega inputs ocultos
-     * para asegurar que region y pais lleguen al servidor.
-     */
     public function outputHiddenFields(): void {
         $location = $this->getSelectedLocation();
         if (empty($location)) {
             return;
         }
+        $state = esc_attr($location['region_id']);
+        $city  = esc_attr($location['comuna_name']);
         ?>
         <input type="hidden" name="shipping_country" value="CL">
-        <input type="hidden" name="shipping_state" value="<?php echo esc_attr($location['region_id']); ?>">
-        <input type="hidden" name="shipping_city" value="<?php echo esc_attr($location['comuna_name']); ?>">
+        <input type="hidden" name="shipping_state" value="<?php echo $state; ?>">
+        <input type="hidden" name="shipping_city" value="<?php echo $city; ?>">
+        <input type="hidden" name="billing_country" value="CL">
+        <input type="hidden" name="billing_state" value="<?php echo $state; ?>">
+        <input type="hidden" name="billing_city" value="<?php echo $city; ?>">
         <?php
+    }
+
+    public function updateSessionFromCookie(): void {
+        $location = $this->getSelectedLocation();
+        if (empty($location) || !WC()->customer) {
+            return;
+        }
+
+        WC()->customer->set_shipping_country('CL');
+        WC()->customer->set_shipping_state($location['region_id']);
+        WC()->customer->set_shipping_city($location['comuna_name']);
+        WC()->customer->set_billing_country('CL');
+        WC()->customer->set_billing_state($location['region_id']);
+        WC()->customer->set_billing_city($location['comuna_name']);
+        WC()->customer->save();
     }
 
     // -------------------------------------------------------------------------
@@ -155,21 +181,53 @@ class CheckoutShippingFilter {
         ?>
         <script>
         (function($) {
+            var FIELD_IDS = [
+                '#shipping_city', '#shipping_state', '#shipping_country',
+                '#billing_city',  '#billing_state',  '#billing_country'
+            ];
+
             function lockLocationFields() {
-                ['#shipping_city', '#shipping_state', '#shipping_country'].forEach(function(id) {
+                FIELD_IDS.forEach(function(id) {
                     var $field = $(id);
                     if (!$field.length) return;
 
-                    $field.prop('disabled', true);
+                    $field.prop('disabled', true).attr('readonly', true);
 
-                    $field.closest('.form-row')
+                    // Cubre tanto el wrapper nativo de WC (.form-row) como el de Elementor (.elementor-field-group).
+                    $field.closest('.form-row, .elementor-field-group')
                           .find('.select2-container')
                           .css({'pointer-events': 'none', 'opacity': '0.65'});
                 });
             }
 
+            // Disparo inicial y tras cada refresco de WooCommerce.
             $(document).ready(lockLocationFields);
             $(document.body).on('updated_checkout', lockLocationFields);
+
+            // Elementor Pro reinicializa Select2 al montar el widget.
+            $(window).on('elementor/frontend/init', function() {
+                $(document).on('elementor-pro/woocommerce/checkout/init', lockLocationFields);
+                lockLocationFields();
+            });
+
+            // MutationObserver: re-bloquea si Elementor reconstruye el DOM del checkout.
+            if (window.MutationObserver) {
+                var observer = new MutationObserver(function(mutations) {
+                    var needsLock = mutations.some(function(m) {
+                        return m.addedNodes.length > 0;
+                    });
+                    if (needsLock) {
+                        lockLocationFields();
+                    }
+                });
+
+                $(document).ready(function() {
+                    var target = document.querySelector('.woocommerce-checkout, .e-checkout__container');
+                    if (target) {
+                        observer.observe(target, { childList: true, subtree: true });
+                    }
+                });
+            }
         })(jQuery);
         </script>
         <?php

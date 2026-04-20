@@ -107,6 +107,14 @@ class CartWarehouseSwitchHandler extends BaseAjaxHandler {
         $cart->set_session();
         WC()->session->save_data();
 
+        // Para usuarios logueados, WooCommerce tambien persiste el carrito en user meta.
+        // Si no lo limpiamos, la pagina del carrito puede restaurar el carrito viejo
+        // desde ese meta ignorando la sesion que acabamos de actualizar.
+        $user_id = get_current_user_id();
+        if ($user_id) {
+            delete_user_meta($user_id, '_woocommerce_persistent_cart_' . get_current_blog_id());
+        }
+
         wp_send_json_success(['items' => $results, 'cleared' => true]);
     }
 }
