@@ -9,6 +9,9 @@ if (!defined('ABSPATH')) {
 class ProductPageCustomizer {
 
     public function __construct() {
+        // Categoria hoja encima del titulo (prioridad 4, el titulo es 5)
+        add_action('woocommerce_single_product_summary', [$this, 'displayLeafCategory'], 4);
+
         // Meta (Stock, SKU, Categorias) antes del formulario de carrito
         add_action('woocommerce_before_add_to_cart_form', [$this, 'displayProductExtraMeta']);
 
@@ -132,6 +135,58 @@ class ProductPageCustomizer {
             <?php endif; ?>
         </div>
         <?php
+    }
+
+    public function displayLeafCategory(): void {
+        global $product;
+
+        if (!$product) {
+            return;
+        }
+
+        $term = $this->resolveLeafCategory($product);
+
+        if (!$term) {
+            return;
+        }
+
+        $url = get_term_link($term);
+        ?>
+        <div class="sm-product-leaf-category">
+            <a href="<?php echo esc_url($url); ?>"><?php echo esc_html($term->name); ?></a>
+        </div>
+        <?php
+    }
+
+    private function resolveLeafCategory(\WC_Product $product): ?\WP_Term {
+        $terms = get_the_terms($product->get_id(), 'product_cat');
+
+        if (!$terms || is_wp_error($terms)) {
+            return null;
+        }
+
+        $terms = array_filter($terms, fn($t) => strtolower($t->name) !== 'uncategorized');
+
+        if (empty($terms)) {
+            return null;
+        }
+
+        // La categoria hoja es la que no es padre de ninguna otra en la lista
+        foreach ($terms as $term) {
+            $is_parent = false;
+            foreach ($terms as $other) {
+                if ((int) $other->parent === $term->term_id) {
+                    $is_parent = true;
+                    break;
+                }
+            }
+            if (!$is_parent) {
+                return $term;
+            }
+        }
+
+        // Fallback: devolver la ultima
+        return end($terms) ?: null;
     }
 
     private function resolveStockQuantity(\WC_Product $product): ?int {

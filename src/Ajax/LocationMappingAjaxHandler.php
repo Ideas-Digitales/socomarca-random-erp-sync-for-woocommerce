@@ -29,9 +29,10 @@ class LocationMappingAjaxHandler {
 
         foreach ($mapping as $region) {
             if (($region['id'] ?? '') === $region_id) {
-                wp_send_json_success([
-                    'comunas' => $region['comunas'] ?? [],
-                ]);
+                $comunas = array_values(array_filter($region['comunas'] ?? [], function (array $c): bool {
+                    return ($c['warehouse_id'] ?? '') !== 'disabled';
+                }));
+                wp_send_json_success(['comunas' => $comunas]);
                 return;
             }
         }

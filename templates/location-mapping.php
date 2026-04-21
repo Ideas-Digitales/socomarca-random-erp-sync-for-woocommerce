@@ -79,6 +79,7 @@ $available_states  = array_diff_key($cl_states, array_flip($mapped_region_ids));
                             Asignar bodega a toda la region:
                             <select class="sm-region-warehouse">
                                 <option value="">-- Seleccione una bodega --</option>
+                                <option value="disabled">Desactivado</option>
                                 <?php foreach ($warehouses as $wh): ?>
                                 <option value="<?php echo esc_attr((string) $wh->term_id); ?>">
                                     <?php echo esc_html($wh->name); ?>
@@ -105,6 +106,7 @@ $available_states  = array_diff_key($cl_states, array_flip($mapped_region_ids));
                                 <td>
                                     <select class="sm-comuna-warehouse">
                                         <option value="">-- Sin asignar --</option>
+                                        <option value="disabled" <?php selected((string) ($comuna['warehouse_id'] ?? ''), 'disabled'); ?>>Desactivado</option>
                                         <?php foreach ($warehouses as $wh): ?>
                                         <option value="<?php echo esc_attr((string) $wh->term_id); ?>" <?php selected((string) ($comuna['warehouse_id'] ?? ''), (string) $wh->term_id); ?>>
                                             <?php echo esc_html($wh->name); ?>
@@ -186,6 +188,7 @@ $available_states  = array_diff_key($cl_states, array_flip($mapped_region_ids));
 
     var warehouseOptions = <?php
         $opts = '<option value="">-- Sin asignar --</option>';
+        $opts .= '<option value="disabled">Desactivado</option>';
         foreach ($warehouses as $wh) {
             $opts .= '<option value="' . esc_attr((string) $wh->term_id) . '">' . esc_html($wh->name) . '</option>';
         }
@@ -208,7 +211,7 @@ $available_states  = array_diff_key($cl_states, array_flip($mapped_region_ids));
                 comunas.push({
                     id:           cid,
                     name:         cname,
-                    warehouse_id: cwh ? parseInt(cwh, 10) : null,
+                    warehouse_id: cwh === 'disabled' ? 'disabled' : (cwh ? parseInt(cwh, 10) : null),
                 });
             });
 

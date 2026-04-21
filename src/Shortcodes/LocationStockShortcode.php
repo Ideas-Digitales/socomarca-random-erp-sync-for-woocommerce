@@ -73,7 +73,15 @@ class LocationStockShortcode {
             'button_text' => 'Seleccionar ubicacion',
         ], $atts, 'socomarca_location_stock');
 
-        $mapping     = LocationMappingAdmin::getMapping();
+        $raw_mapping = LocationMappingAdmin::getMapping();
+        $mapping     = array_values(array_filter($raw_mapping, function (array $region): bool {
+            foreach (($region['comunas'] ?? []) as $comuna) {
+                if (($comuna['warehouse_id'] ?? '') !== 'disabled') {
+                    return true;
+                }
+            }
+            return false;
+        }));
         $display     = $this->getSelectedLocationDisplay();
         $has_selected = !empty($display['comuna_name']);
 

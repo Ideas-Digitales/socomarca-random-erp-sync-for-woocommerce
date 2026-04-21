@@ -16,9 +16,11 @@ use Socomarca\RandomERP\Ajax\CronSyncAjaxHandler;
 use Socomarca\RandomERP\Admin\AdminPages;
 use Socomarca\RandomERP\Admin\CategoryTaxonomyAdmin;
 use Socomarca\RandomERP\Admin\LocationMappingAdmin;
+use Socomarca\RandomERP\Admin\ProductFilterAdmin;
 use Socomarca\RandomERP\Ajax\LocationMappingAjaxHandler;
 use Socomarca\RandomERP\Filters\CheckoutShippingFilter;
 use Socomarca\RandomERP\Filters\LocationProductFilter;
+use Socomarca\RandomERP\Filters\ProductVisibilityFilter;
 use Socomarca\RandomERP\Services\DocumentService;
 use Socomarca\RandomERP\Services\CronSyncService;
 use Socomarca\RandomERP\Shortcodes\LocationStockShortcode;
@@ -77,11 +79,13 @@ class Plugin {
         new CategoryTaxonomyAdmin();
         new LocationMappingAdmin();
         new LocationMappingAjaxHandler();
+        new ProductFilterAdmin();
 
         new DocumentService();
 
         new LocationStockShortcode();
         new LocationProductFilter();
+        new ProductVisibilityFilter();
         new CheckoutShippingFilter();
         new MultilocationBlockFix();
         new ProductPageCustomizer();

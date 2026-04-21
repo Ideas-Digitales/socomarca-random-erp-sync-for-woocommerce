@@ -106,9 +106,19 @@ class EntityService extends BaseApiService {
                     
                     $updated_users++;
                 } else {
-                    
+
                     $user_data['user_pass'] = wp_generate_password();
+
+                    // Suprimir emails automaticos durante la importacion
+                    add_filter('woocommerce_email_enabled_customer_new_account', '__return_false');
+                    add_filter('wp_send_new_user_notification_to_user',  '__return_false');
+                    add_filter('wp_send_new_user_notification_to_admin', '__return_false');
+
                     $user_id = wp_insert_user($user_data);
+
+                    remove_filter('woocommerce_email_enabled_customer_new_account', '__return_false');
+                    remove_filter('wp_send_new_user_notification_to_user',  '__return_false');
+                    remove_filter('wp_send_new_user_notification_to_admin', '__return_false');
 
                     if (is_wp_error($user_id)) {
                         $errors[] = 'Error creando usuario ' . $rut . ': ' . $user_id->get_error_message();
