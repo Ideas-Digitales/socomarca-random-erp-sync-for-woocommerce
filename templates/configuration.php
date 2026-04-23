@@ -23,6 +23,15 @@
                 </tr>
                 <tr>
                     <th>
+                        Bodegas
+                    </th>
+                    <td class="sm_sync" data-action="sm_get_warehouses">
+                        <a class="button" href="#">Sincronizar bodegas</a>
+                        <span class="sm_sync_result"></span>
+                    </td>
+                </tr>
+                <tr>
+                    <th>
                         Categorías
                     </th>
                     <td class="sm_sync" data-action="sm_get_categories">
@@ -72,15 +81,6 @@
                     </th>
                     <td class="sm_sync" data-action="sm_get_brands">
                         <a class="button" href="#">Sincronizar marcas</a>
-                        <span class="sm_sync_result"></span>
-                    </td>
-                </tr>
-                <tr>
-                    <th>
-                        Bodegas
-                    </th>
-                    <td class="sm_sync" data-action="sm_get_warehouses">
-                        <a class="button" href="#">Sincronizar bodegas</a>
                         <span class="sm_sync_result"></span>
                     </td>
                 </tr>
@@ -303,9 +303,70 @@
                             </p>
                         </td>
                     </tr>
+                    <tr>
+                        <th>
+                            Limite de productos a sincronizar
+                        </th>
+                        <td>
+                            <input name="sm_product_limit" type="number" id="sm_product_limit" value="<?php echo esc_attr($product_limit); ?>" class="small-text" min="-1" step="1">
+                            <p class="description">Cantidad maxima de productos a sincronizar desde el ERP. Use <strong>-1</strong> para sincronizar todos los productos sin limite.</p>
+                        </td>
+                    </tr>
                 </tbody>
             </table>
-            
+
+            <h2>Configuracion de Tienda</h2>
+            <table class="form-table">
+                <tbody>
+                    <tr>
+                        <th>
+                            Version de assets CSS/JS
+                        </th>
+                        <td>
+                            <input name="sm_asset_version" type="text" id="sm_asset_version" value="<?php echo esc_attr($asset_version); ?>" class="regular-text code">
+                            <p class="description">Version usada para cache busting de archivos CSS y JS del frontend. Cambiela manualmente para forzar la recarga en navegadores.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
+                            Selector de variaciones
+                        </th>
+                        <td>
+                            <label>
+                                <input name="sm_hide_variation_selector" type="checkbox" id="sm_hide_variation_selector" value="1" <?php checked($hide_variation_selector, true); ?> />
+                                Ocultar selector de variaciones cuando hay una sola opcion disponible
+                            </label>
+                            <p class="description">Cuando esta activo, si un producto variable tiene una unica variacion disponible se selecciona automaticamente y se oculta el selector.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
+                            Selector de bodega
+                        </th>
+                        <td>
+                            <label>
+                                <input name="sm_hide_warehouse_selector" type="checkbox" id="sm_hide_warehouse_selector" value="1" <?php checked($hide_warehouse_selector, true); ?> />
+                                Ocultar el selector de bodega de Multiloca en la pagina de producto
+                            </label>
+                            <p class="description">Cuando esta activo, se oculta el bloque <code>.multiloca-lite-inventory</code> en paginas de producto individuales.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
+                            Ubicacion por defecto
+                        </th>
+                        <td>
+                            <label for="sm_default_region">Region (ID):</label>
+                            <input name="sm_default_region" type="text" id="sm_default_region" value="<?php echo esc_attr($default_region); ?>" class="regular-text code" placeholder="CL-RM">
+                            <br><br>
+                            <label for="sm_default_comuna">Comuna:</label>
+                            <input name="sm_default_comuna" type="text" id="sm_default_comuna" value="<?php echo esc_attr($default_comuna); ?>" class="regular-text" placeholder="Santiago">
+                            <p class="description">Se usa como ubicacion pre-seleccionada en el modal para usuarios nuevos (sin cookie guardada). El ID de region sigue el formato <code>CL-RM</code>, <code>CL-BI</code>, etc.</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
             <h2>Sincronización Automática</h2>
             <table class="form-table">
                 <tbody>

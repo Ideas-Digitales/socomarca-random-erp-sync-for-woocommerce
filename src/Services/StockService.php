@@ -121,7 +121,7 @@ class StockService extends BaseApiService {
      * Cada entrada corresponde a una bodega (KOBO) distinta.
      * Por cada entrada:
      *   - Se asocia el producto a la taxonomia "locations" de esa bodega.
-     *   - Se actualiza el stock de la variacion con STOCNV1.
+     *   - Se actualiza el stock de la variacion con STFI1.
      *
      * Si el producto tiene multiples variaciones, todas reciben el mismo
      * valor de stock porque el endpoint no distingue por unidad.
@@ -144,7 +144,7 @@ class StockService extends BaseApiService {
 
         foreach ($entries as $entry) {
             $kobo   = $entry['KOBO'] ?? '';
-            $stock  = isset($entry['STOCNV1']) ? intval($entry['STOCNV1']) : 0;
+            $stock  = isset($entry['STFI1']) ? intval($entry['STFI1']) : 0;
 
             if (empty($kobo)) {
                 continue;

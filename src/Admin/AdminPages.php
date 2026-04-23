@@ -103,6 +103,15 @@ class AdminPages {
         $invoice_on_completion = isset($_POST['sm_invoice_on_completion']) ? 1 : 0;
         $cron_enabled = isset($_POST['sm_cron_enabled']) ? 1 : 0;
         $cron_time = sanitize_text_field($_POST['sm_cron_time'] ?? '02:00');
+        $product_limit = intval($_POST['sm_product_limit'] ?? -1);
+        if ($product_limit < -1) {
+            $product_limit = -1;
+        }
+        $hide_variation_selector = isset($_POST['sm_hide_variation_selector']) ? 1 : 0;
+        $hide_warehouse_selector = isset($_POST['sm_hide_warehouse_selector']) ? 1 : 0;
+        $asset_version = sanitize_text_field($_POST['sm_asset_version'] ?? SOCOMARCA_ERP_VERSION);
+        $default_region = sanitize_text_field($_POST['sm_default_region'] ?? '');
+        $default_comuna = sanitize_text_field($_POST['sm_default_comuna'] ?? '');
         
         
         update_option('sm_operation_mode', $operation_mode);
@@ -119,6 +128,12 @@ class AdminPages {
         update_option('sm_invoice_on_completion', $invoice_on_completion);
         update_option('sm_cron_enabled', $cron_enabled);
         update_option('sm_cron_time', $cron_time);
+        update_option('sm_product_limit', $product_limit);
+        update_option('sm_hide_variation_selector', $hide_variation_selector);
+        update_option('sm_hide_warehouse_selector', $hide_warehouse_selector);
+        update_option('sm_asset_version', $asset_version);
+        update_option('sm_default_region', $default_region);
+        update_option('sm_default_comuna', $default_comuna);
         
         // Reconfigurar el cron job
         $cronService = new \Socomarca\RandomERP\Services\CronSyncService();
@@ -151,6 +166,12 @@ class AdminPages {
             'invoice_on_completion' => get_option('sm_invoice_on_completion', false),
             'cron_enabled' => get_option('sm_cron_enabled', false),
             'cron_time' => get_option('sm_cron_time', '02:00'),
+            'product_limit' => intval(get_option('sm_product_limit', -1)),
+            'hide_variation_selector' => get_option('sm_hide_variation_selector', false),
+            'hide_warehouse_selector' => get_option('sm_hide_warehouse_selector', false),
+            'asset_version' => get_option('sm_asset_version', SOCOMARCA_ERP_VERSION),
+            'default_region' => get_option('sm_default_region', 'CL-RM'),
+            'default_comuna' => get_option('sm_default_comuna', 'Santiago'),
             'last_sync' => $cronService->getLastSyncInfo()
         ];
     }

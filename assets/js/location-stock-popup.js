@@ -81,18 +81,29 @@
         },
 
         restoreFromConfig: function () {
-            var regionId = sm_location_popup.selected_region;
-            var comunaId = sm_location_popup.selected_comuna;
+            var hasCookie = !!SmLocationPopup.parseCookie();
+            var regionId  = hasCookie ? sm_location_popup.selected_region : sm_location_popup.default_region;
+            var comunaId  = hasCookie ? sm_location_popup.selected_comuna  : sm_location_popup.default_comuna;
 
             if (!regionId) return;
 
             var $regionSelect = $('#sm-region-select');
             $regionSelect.val(regionId);
+            var regionName = $regionSelect.find('option:selected').text();
 
-            if (regionId) {
-                var regionName = $regionSelect.find('option:selected').text();
-                SmLocationPopup.loadComunas(regionId, regionName, comunaId);
-            }
+            SmLocationPopup.loadComunas(regionId, regionName, comunaId, function () {
+                if (hasCookie) return;
+
+                var $comunaSelect = $('#sm-comuna-select');
+                var comunaName    = $comunaSelect.find('option:selected').text();
+                if (!comunaName || !SmLocationPopup.selectedComunaId) return;
+
+                var $trigger = $('.sm-location-popup-trigger');
+                $trigger.html(
+                    regionName + ' - ' + comunaName +
+                    ' <span class="sm-trigger-change">(cambiar)</span>'
+                );
+            });
         },
 
         onRegionChange: function (regionId, regionName) {
@@ -112,7 +123,7 @@
             SmLocationPopup.loadComunas(regionId, regionName, null);
         },
 
-        loadComunas: function (regionId, regionName, preselectComunaId) {
+        loadComunas: function (regionId, regionName, preselectComunaId, onComplete) {
             var $select  = $('#sm-comuna-select');
             var $loading = $('.sm-location-loading');
 
@@ -149,6 +160,10 @@
                         }
                     } else {
                         $select.append('<option value="" disabled>No hay comunas disponibles</option>');
+                    }
+
+                    if (typeof onComplete === 'function') {
+                        onComplete();
                     }
                 },
                 error: function () {

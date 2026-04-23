@@ -32,13 +32,19 @@ class ProductService extends BaseApiService {
         }
         
         
-        \update_option('sm_products_cache', $products['items']);
-        
-        
+        $items = $products['items'];
+        $product_limit = intval(\get_option('sm_product_limit', -1));
+        if ($product_limit > 0) {
+            $items = array_slice($items, 0, $product_limit);
+        }
+
+        \update_option('sm_products_cache', $items);
+        $total = count($items);
+
         return [
             'success' => true,
-            'message' => $products['quantity'] . ' productos obtenidos. Iniciando creación de productos...',
-            'total' => $products['quantity']
+            'message' => $total . ' productos obtenidos. Iniciando creación de productos...',
+            'total' => $total
         ];
     }
     

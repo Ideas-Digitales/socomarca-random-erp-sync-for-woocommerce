@@ -50,7 +50,7 @@ body.single-product .product .price {
     margin-right: 15px !important;
     vertical-align: middle !important;
     border: 1px solid #3F7C30 !important;
-    border-radius: 4px !important;
+    border-radius: 0px !important;
     overflow: hidden !important;
     background: #fff !important;
 }
@@ -178,6 +178,23 @@ input.single_add_to_cart_button:hover {
     background: #3F7C30 !important;
     color: #fff !important;
 }
+
+button.single_add_to_cart_button.sm-btn-gated,
+button.single_add_to_cart_button.sm-btn-gated:hover {
+    background: #e0e0e0 !important;
+    color: #999 !important;
+    border-color: #ccc !important;
+    cursor: not-allowed !important;
+}
+
+.sm-cart-gating-hint {
+    font-family: "Poppins", sans-serif;
+    font-size: 13px;
+    color: #888;
+    margin-top: 8px;
+    margin-bottom: 0;
+}
+
 
 /* Slider de Productos Relacionados */
 .sm-related-products {
@@ -340,7 +357,7 @@ input.single_add_to_cart_button:hover {
     .sm-related-next { right: 0; }
 }
 
-.jet-compare-button__container, .jet-wishlist-button__container, .multiloca-lite-inventory,  body.single-product .stock.in-stock {
+.jet-compare-button__container, .jet-wishlist-button__container, body.single-product .stock.in-stock {
    display: none !important;
 }
 

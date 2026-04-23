@@ -13,6 +13,7 @@
             this.initMultilocaAutoSelect();
             this.autoSelectSingleVariation();
             this.initRelatedSlider();
+            this.initAddToCartGating();
 
             // Reiniciar botones si WooCommerce recarga el formulario (variaciones)
             $(document).on('woocommerce_variation_has_changed updated_checkout', function () {
@@ -113,7 +114,76 @@
             });
         },
 
+        initAddToCartGating: function () {
+            if (!$('.variations_form').length) return;
+
+            var $btn = $('button.single_add_to_cart_button');
+            if (!$btn.length) return;
+
+            var $hint = $('<p class="sm-cart-gating-hint"></p>');
+            $btn.after($hint);
+            $hint.hide();
+
+            function hasVariation() {
+                return !!$('input[name="variation_id"]').val();
+            }
+
+            function hasLocation() {
+                return !!$('.multiloca-location-selected').length;
+            }
+
+            function lockButton(message) {
+                $btn.prop('disabled', true).addClass('sm-btn-gated');
+                $hint.text(message).show();
+            }
+
+            function unlockButton() {
+                $btn.prop('disabled', false).removeClass('sm-btn-gated');
+                $hint.hide();
+            }
+
+            function setTriggerLocked(locked) {
+                $('.sm-location-popup-trigger').toggleClass('sm-location-locked', locked);
+            }
+
+            function evaluate() {
+                var v = hasVariation();
+                var l = hasLocation();
+
+                if (v && l) {
+                    setTriggerLocked(false);
+                    unlockButton();
+                } else if (v) {
+                    setTriggerLocked(false);
+                    //lockButton('Selecciona tu ubicacion para agregar al carrito');
+                } else {
+                    setTriggerLocked(true);
+                    //lockButton('Selecciona la variacion y tu ubicacion para agregar al carrito');
+                }
+            }
+
+            // Estado inicial
+            setTriggerLocked(true);
+            //lockButton('Selecciona la variacion y tu ubicacion para agregar al carrito');
+
+            setTimeout(function() {
+                jQuery('.variations #unidad option[value!=""]:first').prop('selected', true).trigger('change');
+            }, 1000);
+
+            setTimeout(function() {
+                jQuery('.multiloca-lite-table tbody tr:first td:first').click();
+            }, 2000);
+
+            setTimeout(function() {
+            unlockButton();
+            }, 3000);
+
+
+        },
+
         autoSelectSingleVariation: function () {
+            if (typeof sm_location_popup === 'undefined' || sm_location_popup.hide_variation_selector !== '1') return;
+
             var $form = $('.variations_form');
             if ($form.length === 0) return;
 
