@@ -283,10 +283,22 @@ body.sm-modal-open {
     justify-content: flex-end;
 }
 
+.sm-stock-proceed {
+    background-color: #3F7C30 !important;
+    color: #fff !important;
+    border: 1px solid #3F7C30 !important;
+}
+
+.sm-stock-proceed:hover {
+    background-color: #5bb943 !important;
+    color: #fff !important;
+    border: 1px solid #3F7C30 !important;
+}
+
 .sm-stock-cancel {
     background: #fff !important;
-    color: #555 !important;
-    border-color: #ccc !important;
+    color: #3F7C30 !important;
+    border: 1px solid #3F7C30 !important;
 }
 
 .sm-stock-cancel:hover {

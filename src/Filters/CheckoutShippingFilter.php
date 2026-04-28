@@ -14,15 +14,12 @@ if (!defined('ABSPATH')) {
 class CheckoutShippingFilter {
 
     public function __construct() {
-        // Inyecta la ubicacion en WC_Customer — tanto en campos de envio como de facturacion.
-        // WooCommerce usa billing como shipping cuando "enviar a direccion diferente" esta desmarcado,
-        // por lo que ambos conjuntos de getters deben reflejar la bodega seleccionada.
+        // Inyecta la ubicacion en WC_Customer solo para campos de envio.
+        // Los campos de facturacion quedan libres para que el usuario pueda ingresar
+        // una direccion de facturacion distinta a la de envio.
         add_filter('woocommerce_customer_get_shipping_country', [$this, 'filterCustomerCountry']);
         add_filter('woocommerce_customer_get_shipping_state',   [$this, 'filterCustomerState']);
         add_filter('woocommerce_customer_get_shipping_city',    [$this, 'filterCustomerCity']);
-        add_filter('woocommerce_customer_get_billing_country',  [$this, 'filterCustomerCountry']);
-        add_filter('woocommerce_customer_get_billing_state',    [$this, 'filterCustomerState']);
-        add_filter('woocommerce_customer_get_billing_city',     [$this, 'filterCustomerCity']);
 
         // Sobrescribir la sesion del cliente al cargar el checkout para que WC
         // serialice la direccion correcta en wc_checkout_params antes de que
@@ -101,21 +98,12 @@ class CheckoutShippingFilter {
         }
 
         $lock_shipping = ['shipping_state', 'shipping_city', 'shipping_country'];
-        $lock_billing  = ['billing_state',  'billing_city',  'billing_country'];
 
         foreach ($lock_shipping as $key) {
             if (!isset($fields['shipping'][$key])) continue;
             $fields['shipping'][$key]['custom_attributes']['disabled'] = 'disabled';
             if ($key !== 'shipping_country') {
                 $fields['shipping'][$key]['description'] = 'Segun la bodega seleccionada.';
-            }
-        }
-
-        foreach ($lock_billing as $key) {
-            if (!isset($fields['billing'][$key])) continue;
-            $fields['billing'][$key]['custom_attributes']['disabled'] = 'disabled';
-            if ($key !== 'billing_country') {
-                $fields['billing'][$key]['description'] = 'Segun la bodega seleccionada.';
             }
         }
 
@@ -130,13 +118,10 @@ class CheckoutShippingFilter {
 
         switch ($input) {
             case 'shipping_country':
-            case 'billing_country':
                 return 'CL';
             case 'shipping_state':
-            case 'billing_state':
                 return $location['region_id'];
             case 'shipping_city':
-            case 'billing_city':
                 return $location['comuna_name'];
         }
 
@@ -154,9 +139,6 @@ class CheckoutShippingFilter {
         <input type="hidden" name="shipping_country" value="CL">
         <input type="hidden" name="shipping_state" value="<?php echo $state; ?>">
         <input type="hidden" name="shipping_city" value="<?php echo $city; ?>">
-        <input type="hidden" name="billing_country" value="CL">
-        <input type="hidden" name="billing_state" value="<?php echo $state; ?>">
-        <input type="hidden" name="billing_city" value="<?php echo $city; ?>">
         <?php
     }
 
@@ -171,9 +153,6 @@ class CheckoutShippingFilter {
         WC()->customer->set_shipping_country('CL');
         WC()->customer->set_shipping_state($location['region_id']);
         WC()->customer->set_shipping_city($location['comuna_name']);
-        WC()->customer->set_billing_country('CL');
-        WC()->customer->set_billing_state($location['region_id']);
-        WC()->customer->set_billing_city($location['comuna_name']);
         WC()->customer->save();
     }
 
@@ -195,7 +174,6 @@ class CheckoutShippingFilter {
 
         $tpl = '<select name="%s" id="%s" class="state_select" autocomplete="address-level1" disabled>' . $options . '</select>';
 
-        $fragments['#billing_state']  = sprintf($tpl, 'billing_state',  'billing_state');
         $fragments['#shipping_state'] = sprintf($tpl, 'shipping_state', 'shipping_state');
 
         return $fragments;
@@ -210,9 +188,6 @@ class CheckoutShippingFilter {
         WC()->customer->set_shipping_country('CL');
         WC()->customer->set_shipping_state($location['region_id']);
         WC()->customer->set_shipping_city($location['comuna_name']);
-        WC()->customer->set_billing_country('CL');
-        WC()->customer->set_billing_state($location['region_id']);
-        WC()->customer->set_billing_city($location['comuna_name']);
         WC()->customer->save();
     }
 
@@ -235,18 +210,13 @@ class CheckoutShippingFilter {
         $state_name = esc_js($cl_states[$location['region_id']] ?? $location['region_id']);
         ?>
         <style>
-        #billing_state, #shipping_state,
-        #billing_city,  #shipping_city,
-        #billing_country, #shipping_country {
+        #shipping_state, #shipping_city, #shipping_country {
             pointer-events: none !important;
             opacity: 0.65 !important;
             cursor: not-allowed !important;
         }
-        #billing_state_field .select2-container,
         #shipping_state_field .select2-container,
-        #billing_city_field .select2-container,
         #shipping_city_field .select2-container,
-        #billing_country_field .select2-container,
         #shipping_country_field .select2-container {
             pointer-events: none !important;
             opacity: 0.65 !important;
@@ -308,11 +278,8 @@ class CheckoutShippingFilter {
             }
 
             function applyAndLock() {
-                applyState($('#billing_state'));
                 applyState($('#shipping_state'));
-                applyCity('billing');
                 applyCity('shipping');
-                lockField($('#billing_country'));
                 lockField($('#shipping_country'));
             }
 
@@ -326,8 +293,8 @@ class CheckoutShippingFilter {
                 var mo = new MutationObserver(function(mutations) {
                     var affected = mutations.some(function(m) {
                         return Array.from(m.addedNodes).some(function(n) {
-                            return n.id === 'shipping_state' || n.id === 'billing_state' ||
-                                   (n.querySelector && (n.querySelector('#shipping_state') || n.querySelector('#billing_state')));
+                            return n.id === 'shipping_state' ||
+                                   (n.querySelector && n.querySelector('#shipping_state'));
                         });
                     });
                     if (affected) setTimeout(applyAndLock, 0);

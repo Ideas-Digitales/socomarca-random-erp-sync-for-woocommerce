@@ -346,27 +346,25 @@
         },
 
         renderStockComparison: function (items, onConfirm) {
+            var problemItems = $.grep(items, function (item) {
+                return item.status !== 'ok';
+            });
+
+            if (problemItems.length === 0) {
+                onConfirm();
+                return;
+            }
+
             var $container = $('.sm-location-modal-container');
             var $body      = $('.sm-location-modal-body');
 
             SmLocationPopup._savedModalBody = $body.children().detach();
             $container.addClass('sm-location-modal--comparison');
 
-            var hasIssues = false;
-            $.each(items, function (i, item) {
-                if (item.status !== 'ok') {
-                    hasIssues = true;
-                    return false;
-                }
-            });
-
             var html = '<div class="sm-stock-comparison">';
-
-            if (hasIssues) {
-                html += '<div class="sm-stock-notice">';
-                html += '<strong>Importante:</strong> Al cambiar de localidad, algunos productos tendran otro stock disponible.';
-                html += '</div>';
-            }
+            html += '<div class="sm-stock-notice">';
+            html += '<strong>Importante:</strong> Al cambiar de localidad, algunos productos tendran otro stock disponible.';
+            html += '</div>';
 
             html += '<table class="sm-stock-table">';
             html += '<thead><tr>';
@@ -376,14 +374,13 @@
             html += '</tr></thead>';
             html += '<tbody>';
 
-            $.each(items, function (i, item) {
-                var rowClass   = '';
-                var stockLabel = String(item.new_stock);
+            $.each(problemItems, function (i, item) {
+                var rowClass, stockLabel;
 
                 if (item.status === 'out_of_stock') {
                     rowClass   = 'sm-stock-row-error';
                     stockLabel = '0 (Sin Stock)';
-                } else if (item.status === 'partial') {
+                } else {
                     rowClass   = 'sm-stock-row-warning';
                     stockLabel = item.new_stock + ' disponibles';
                 }
@@ -399,7 +396,7 @@
             html += '<p class="sm-stock-question">¿Desea proceder con el cambio de ubicacion?</p>';
             html += '<div class="sm-stock-actions">';
             html += '<button type="button" class="sm-stock-cancel button">No, cancelar</button>';
-            html += '<button type="button" class="sm-stock-proceed button button-primary">Si, cambiar ubicacion</button>';
+            html += '<button type="button" class="sm-stock-proceed button button-primary">Si, cambiar ubicación</button>';
             html += '</div>';
             html += '</div>';
 
