@@ -7,15 +7,20 @@
 
     var SmLocationPopup = {
 
-        selectedRegionId:   null,
-        selectedRegionName: null,
-        selectedComunaId:   null,
-        selectedComunaName: null,
+        selectedRegionId:    null,
+        selectedRegionName:  null,
+        selectedComunaId:    null,
+        selectedComunaName:  null,
         selectedWarehouseId: null,
+        _savedModalBody:     null,
 
         init: function () {
             this.bindEvents();
             this.restoreFromConfig();
+
+            if (!SmLocationPopup.parseCookie()) {
+                SmLocationPopup.openModal();
+            }
         },
 
         bindEvents: function () {
@@ -78,6 +83,7 @@
         closeModal: function () {
             $('#sm-location-modal').fadeOut(200);
             $('body').removeClass('sm-modal-open');
+            SmLocationPopup._restoreModalBody();
         },
 
         restoreFromConfig: function () {
@@ -182,31 +188,29 @@
 
             if (!comunaId) return;
 
-            // Leer bodega actual del cookie antes de sobreescribirlo
             var prevCookie       = SmLocationPopup.parseCookie();
             var prevWarehouseId  = prevCookie ? parseInt(prevCookie.warehouse_id, 10) : null;
             var newWarehouseId   = warehouseId ? parseInt(warehouseId, 10) : null;
             var warehouseChanged = newWarehouseId && newWarehouseId !== prevWarehouseId;
 
             console.log('[SM] confirmSelection', {
-                warehouseId:     warehouseId,
-                newWarehouseId:  newWarehouseId,
-                prevWarehouseId: prevWarehouseId,
+                warehouseId:      warehouseId,
+                newWarehouseId:   newWarehouseId,
+                prevWarehouseId:  prevWarehouseId,
                 warehouseChanged: warehouseChanged,
-                prevCookie:      prevCookie,
+                prevCookie:       prevCookie,
             });
 
-            // Guardar nueva seleccion en cookie
-            var cookieData = JSON.stringify({
-                region_id:    regionId,
-                region_name:  regionName,
-                comuna_id:    comunaId,
-                comuna_name:  comunaName,
-                warehouse_id: newWarehouseId,
-            });
-            document.cookie = 'sm_selected_location=' + encodeURIComponent(cookieData) + '; path=/; max-age=2592000';
-
-            SmLocationPopup.closeModal();
+            var saveCookie = function () {
+                var cookieData = JSON.stringify({
+                    region_id:    regionId,
+                    region_name:  regionName,
+                    comuna_id:    comunaId,
+                    comuna_name:  comunaName,
+                    warehouse_id: newWarehouseId,
+                });
+                document.cookie = 'sm_selected_location=' + encodeURIComponent(cookieData) + '; path=/; max-age=2592000';
+            };
 
             var showReloadOverlay = function () {
                 var $overlay = $(
@@ -246,6 +250,15 @@
                 // Lo removemos para que la recarga sea inmediata y sin dialogo.
                 $(window).off('beforeunload');
 
+                // Limpiar params add-to-cart de la URL antes de navegar.
+                // window.location.reload() re-envia los GET params actuales, lo que provoca
+                // que WC procese el add-to-cart nuevamente y duplique items en el carrito.
+                var url = new URL(window.location.href);
+                url.searchParams.delete('add-to-cart');
+                url.searchParams.delete('quantity');
+                url.searchParams.delete('variation_id');
+                var targetUrl = url.toString();
+
                 if (warehouseId) {
                     $.ajax({
                         url:  sm_location_popup.ajax_url,
@@ -257,28 +270,32 @@
                             nonce:         sm_location_popup.multiloca_nonce,
                         },
                         complete: function () {
-                            window.location.reload();
+                            window.location.href = targetUrl;
                         },
                     });
                 } else {
-                    window.location.reload();
+                    window.location.href = targetUrl;
                 }
             };
 
-            if (warehouseChanged) {
-                // Verificar stock del carrito en la nueva bodega antes de recargar
+            var executeSwitchAndReload = function () {
+                SmLocationPopup.closeModal();
+                // Marcar que se acaba de cambiar bodega. El servidor lee esta cookie en init
+                // (prioridad 1) y elimina los params add-to-cart antes de que WC los procese,
+                // evitando que la recarga re-agregue items al carrito desde la URL anterior.
+                document.cookie = 'sm_cart_switched=1; path=/; max-age=60';
                 $.ajax({
                     url:  sm_location_popup.ajax_url,
                     type: 'POST',
                     data: {
-                        action:       'sm_switch_warehouse_cart',
-                        nonce:        sm_location_popup.popup_nonce,
-                        warehouse_id: newWarehouseId,
+                        action:        'sm_switch_warehouse_cart',
+                        nonce:         sm_location_popup.popup_nonce,
+                        warehouse_id:  newWarehouseId,
+                        location_name: comunaName,
                     },
                     success: function (response) {
                         if (response.success && response.data.cleared) {
                             SmLocationPopup.renderCartSwitchToasts(response.data.items);
-                            // Dar tiempo al usuario de leer los toasts antes de recargar
                             setTimeout(doReload, 2200);
                         } else {
                             doReload();
@@ -288,9 +305,121 @@
                         doReload();
                     },
                 });
+            };
+
+            var proceed = function () {
+                saveCookie();
+                if (warehouseChanged) {
+                    executeSwitchAndReload();
+                } else {
+                    SmLocationPopup.closeModal();
+                    doReload();
+                }
+            };
+
+            if (warehouseChanged) {
+                // Bloquear boton mientras se consulta el stock
+                $('.sm-location-confirm').prop('disabled', true);
+
+                $.ajax({
+                    url:  sm_location_popup.ajax_url,
+                    type: 'POST',
+                    data: {
+                        action:       'sm_cart_stock_preview',
+                        nonce:        sm_location_popup.popup_nonce,
+                        warehouse_id: newWarehouseId,
+                    },
+                    success: function (response) {
+                        if (response.success && !response.data.empty && response.data.items.length > 0) {
+                            SmLocationPopup.renderStockComparison(response.data.items, proceed);
+                        } else {
+                            proceed();
+                        }
+                    },
+                    error: function () {
+                        proceed();
+                    },
+                });
             } else {
-                doReload();
+                proceed();
             }
+        },
+
+        renderStockComparison: function (items, onConfirm) {
+            var $container = $('.sm-location-modal-container');
+            var $body      = $('.sm-location-modal-body');
+
+            SmLocationPopup._savedModalBody = $body.children().detach();
+            $container.addClass('sm-location-modal--comparison');
+
+            var hasIssues = false;
+            $.each(items, function (i, item) {
+                if (item.status !== 'ok') {
+                    hasIssues = true;
+                    return false;
+                }
+            });
+
+            var html = '<div class="sm-stock-comparison">';
+
+            if (hasIssues) {
+                html += '<div class="sm-stock-notice">';
+                html += '<strong>Importante:</strong> Al cambiar de localidad, algunos productos tendran otro stock disponible.';
+                html += '</div>';
+            }
+
+            html += '<table class="sm-stock-table">';
+            html += '<thead><tr>';
+            html += '<th>Producto</th>';
+            html += '<th>Cant. en carrito</th>';
+            html += '<th>Stock nueva ubicacion</th>';
+            html += '</tr></thead>';
+            html += '<tbody>';
+
+            $.each(items, function (i, item) {
+                var rowClass   = '';
+                var stockLabel = String(item.new_stock);
+
+                if (item.status === 'out_of_stock') {
+                    rowClass   = 'sm-stock-row-error';
+                    stockLabel = '0 (Sin Stock)';
+                } else if (item.status === 'partial') {
+                    rowClass   = 'sm-stock-row-warning';
+                    stockLabel = item.new_stock + ' disponibles';
+                }
+
+                html += '<tr class="' + rowClass + '">';
+                html += '<td>' + $('<span>').text(item.product_name).html() + '</td>';
+                html += '<td class="sm-stock-center">' + item.quantity + '</td>';
+                html += '<td class="sm-stock-center">' + stockLabel + '</td>';
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            html += '<p class="sm-stock-question">¿Desea proceder con el cambio de ubicacion?</p>';
+            html += '<div class="sm-stock-actions">';
+            html += '<button type="button" class="sm-stock-cancel button">No, cancelar</button>';
+            html += '<button type="button" class="sm-stock-proceed button button-primary">Si, cambiar ubicacion</button>';
+            html += '</div>';
+            html += '</div>';
+
+            $body.html(html);
+
+            $body.find('.sm-stock-cancel').one('click', function () {
+                SmLocationPopup._restoreModalBody();
+            });
+
+            $body.find('.sm-stock-proceed').one('click', function () {
+                onConfirm();
+            });
+        },
+
+        _restoreModalBody: function () {
+            if (!SmLocationPopup._savedModalBody) return;
+            var $body = $('.sm-location-modal-body');
+            $body.empty().append(SmLocationPopup._savedModalBody);
+            SmLocationPopup._savedModalBody = null;
+            $('.sm-location-modal-container').removeClass('sm-location-modal--comparison');
         },
 
         renderCartSwitchToasts: function (items) {

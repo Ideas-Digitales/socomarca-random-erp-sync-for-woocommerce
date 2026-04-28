@@ -14,6 +14,7 @@
             this.autoSelectSingleVariation();
             this.initRelatedSlider();
             this.initAddToCartGating();
+            this.initVariationStockDisplay();
 
             // Reiniciar botones si WooCommerce recarga el formulario (variaciones)
             $(document).on('woocommerce_variation_has_changed updated_checkout', function () {
@@ -170,8 +171,17 @@
                 jQuery('.variations #unidad option[value!=""]:first').prop('selected', true).trigger('change');
             }, 1000);
 
-            setTimeout(function() {
-                jQuery('.multiloca-lite-table tbody tr:first td:first').click();
+            setTimeout(function () {
+                var warehouseId = (typeof sm_location_popup !== 'undefined' && sm_location_popup.selected_warehouse_id)
+                    ? sm_location_popup.selected_warehouse_id
+                    : 0;
+                var $row = warehouseId
+                    ? jQuery('.multiloca-lite-table [data-location-id="' + warehouseId + '"]')
+                    : jQuery();
+                if (!$row.length) {
+                    $row = jQuery('.multiloca-lite-table tbody tr:first');
+                }
+                $row.find('td:first').click();
             }, 2000);
 
             setTimeout(function() {
@@ -179,6 +189,51 @@
             }, 3000);
 
 
+        },
+
+        initVariationStockDisplay: function () {
+            var $stockEl = $('.sm-meta-item.sm-stock');
+            if (!$stockEl.length) return;
+
+            var stocks = (typeof sm_location_popup !== 'undefined' && sm_location_popup.variation_stocks)
+                ? sm_location_popup.variation_stocks
+                : null;
+
+            // Ocultar hasta tener el stock de la bodega
+            $stockEl.hide();
+
+            $(document).on('found_variation.smstock', function (e, variation) {
+                var vid = String(variation.variation_id);
+                var qty = (stocks && stocks[vid] !== undefined && stocks[vid] !== null)
+                    ? stocks[vid]
+                    : null;
+
+                if (qty !== null) {
+                    $stockEl.html('<strong>Stock</strong> ' + qty).show();
+                } else if (variation.is_in_stock) {
+                    $stockEl.html('<strong>Stock</strong> Disponible').show();
+                } else {
+                    $stockEl.html('<strong>Stock</strong> Sin stock').show();
+                }
+
+                // Actualizar max del input de cantidad con el stock de la bodega.
+                // Corre despues de WooCommerce (setTimeout 0) para sobreescribir su valor.
+                if (qty !== null) {
+                    setTimeout(function () {
+                        var $qty = $('input.qty');
+                        $qty.attr('max', qty);
+                        var current = parseInt($qty.val(), 10) || 1;
+                        if (current > qty) {
+                            $qty.val(qty > 0 ? qty : 0).trigger('change');
+                        }
+                    }, 0);
+                }
+            });
+
+            $(document).on('reset_data.smstock', function () {
+                $stockEl.hide();
+                $('input.qty').removeAttr('max');
+            });
         },
 
         autoSelectSingleVariation: function () {

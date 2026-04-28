@@ -11,11 +11,9 @@ class AdminPages {
     private function registerHooks() {
         add_action('admin_menu', [$this, 'addMenuPages']);
         add_action('admin_enqueue_scripts', [$this, 'enqueueAssets']);
-        error_log('Socomarca ERP: AdminPages hooks registrados');
     }
     
     public function addMenuPages() {
-        error_log('Socomarca ERP: addMenuPages() ejecutándose');
         
         $page = add_menu_page(
             'Socomarca',
@@ -27,7 +25,6 @@ class AdminPages {
             30
         );
         
-        error_log('Socomarca ERP: Menú añadido con resultado: ' . ($page ? $page : 'false'));
     }
     
     public function enqueueAssets($hook) {

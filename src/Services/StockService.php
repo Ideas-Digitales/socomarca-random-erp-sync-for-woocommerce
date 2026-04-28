@@ -184,41 +184,61 @@ class StockService extends BaseApiService {
      *   - wcmlim_product_availability_at_{term_id}
      */
     private function setVariationStock(\WC_Product $product, int $stock, ?int $term_id = null): void {
-        $stock_status = $stock > 0 ? 'instock' : 'outofstock';
-
         if ($product->is_type('variable')) {
             foreach ($product->get_children() as $variation_id) {
                 $variation = wc_get_product($variation_id);
                 if (!$variation) {
                     continue;
                 }
-                $variation->set_manage_stock(true);
-                $variation->set_stock_quantity($stock);
-                $variation->set_stock_status($stock_status);
-                $variation->save();
 
-                // Metas de Multiloca Lite (por ubicacion)
+                // Actualizar meta de Multiloca antes de calcular el total
                 if ($term_id) {
                     update_post_meta($variation_id, 'wcmlim_stock_at_' . $term_id, $stock);
                     update_post_meta($variation_id, 'wcmlim_product_availability_at_' . $term_id, $stock > 0 ? 'yes' : 'no');
                 }
+
+                // _stock debe ser la suma de todas las bodegas para que WooCommerce
+                // no bloquee el carrito con el stock de una sola ubicacion
+                $total = $this->sumLocationStock($variation_id);
+                $variation->set_manage_stock(true);
+                $variation->set_stock_quantity($total);
+                $variation->set_stock_status($total > 0 ? 'instock' : 'outofstock');
+                $variation->save();
             }
             wc_delete_product_transients($product->get_id());
             $product->get_data_store()->update_lookup_table($product->get_id(), 'wc_product_meta_lookup');
         } else {
-            $product->set_manage_stock(true);
-            $product->set_stock_quantity($stock);
-            $product->set_stock_status($stock_status);
-            $product->save();
-
             if ($term_id) {
                 update_post_meta($product->get_id(), 'wcmlim_stock_at_' . $term_id, $stock);
                 update_post_meta($product->get_id(), 'wcmlim_product_availability_at_' . $term_id, $stock > 0 ? 'yes' : 'no');
             }
 
+            $total = $this->sumLocationStock($product->get_id());
+            $product->set_manage_stock(true);
+            $product->set_stock_quantity($total);
+            $product->set_stock_status($total > 0 ? 'instock' : 'outofstock');
+            $product->save();
+
             wc_delete_product_transients($product->get_id());
             $product->get_data_store()->update_lookup_table($product->get_id(), 'wc_product_meta_lookup');
         }
+    }
+
+    /**
+     * Suma el stock de todas las ubicaciones (wcmlim_stock_at_{term_id}) para
+     * un post dado. Usado para mantener _stock como total real en lugar del
+     * stock de una sola bodega.
+     */
+    private function sumLocationStock(int $post_id): int {
+        $terms = get_terms(['taxonomy' => 'locations', 'hide_empty' => false, 'fields' => 'ids']);
+        if (is_wp_error($terms) || empty($terms)) {
+            return 0;
+        }
+        $total = 0;
+        foreach ($terms as $tid) {
+            $total += (int) get_post_meta($post_id, 'wcmlim_stock_at_' . $tid, true);
+        }
+        return $total;
     }
 
     /**

@@ -357,7 +357,7 @@ button.single_add_to_cart_button.sm-btn-gated:hover {
     .sm-related-next { right: 0; }
 }
 
-.jet-compare-button__container, .jet-wishlist-button__container, body.single-product .stock.in-stock {
+.jet-compare-button__container, .jet-wishlist-button__container {
    display: none !important;
 }
 
@@ -387,4 +387,8 @@ body.single-product .woocommerce div.product form.cart div.quantity {
     clip-path: inset(0 round 0px) !important;
     border-radius: 0px !important;
 
+}
+
+.variation-Location, .multiloca-message.woocommerce-message, .vi-wcaio-sidebar-cart-pd-meta {
+	/* display: none !important; */
 }

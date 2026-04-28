@@ -20,20 +20,20 @@ class LocationStockShortcode {
             return;
         }
 
-        $version = get_option('sm_asset_version', SOCOMARCA_ERP_VERSION);
+        $plugin_dir = plugin_dir_path(dirname(__DIR__));
 
         wp_enqueue_style(
             'sm-location-popup',
             SOCOMARCA_ERP_PLUGIN_URL . 'assets/css/location-stock-popup.css',
             [],
-            $version
+            filemtime($plugin_dir . 'assets/css/location-stock-popup.css')
         );
 
         wp_enqueue_style(
             'theme-overrides',
             SOCOMARCA_ERP_PLUGIN_URL . 'assets/css/theme.css',
             [],
-            $version
+            filemtime($plugin_dir . 'assets/css/theme.css')
         );
 
         if (is_product() && get_option('sm_hide_warehouse_selector', false)) {
@@ -44,7 +44,7 @@ class LocationStockShortcode {
             'sm-location-popup',
             SOCOMARCA_ERP_PLUGIN_URL . 'assets/js/location-stock-popup.js',
             ['jquery'],
-            $version,
+            filemtime($plugin_dir . 'assets/js/location-stock-popup.js'),
             true
         );
 
@@ -53,7 +53,7 @@ class LocationStockShortcode {
                 'sm-variations-helper',
                 SOCOMARCA_ERP_PLUGIN_URL . 'assets/js/variations-helper.js',
                 ['jquery', 'wc-add-to-cart-variation'],
-                $version,
+                filemtime($plugin_dir . 'assets/js/variations-helper.js'),
                 true
             );
         }
@@ -63,6 +63,8 @@ class LocationStockShortcode {
         $multiloca_location_id = isset($_SESSION['multiloca_selected_location_id'])
             ? (int) $_SESSION['multiloca_selected_location_id']
             : ($display['warehouse_id'] ?? 0);
+
+        $variation_stocks = $this->getVariationStocksForWarehouse($multiloca_location_id);
 
         wp_localize_script('sm-location-popup', 'sm_location_popup', [
             'ajax_url'                => admin_url('admin-ajax.php'),
@@ -74,6 +76,7 @@ class LocationStockShortcode {
             'hide_variation_selector' => get_option('sm_hide_variation_selector', false) ? '1' : '0',
             'default_region'          => get_option('sm_default_region', 'CL-RM'),
             'default_comuna'          => get_option('sm_default_comuna', 'Santiago'),
+            'variation_stocks'        => $variation_stocks,
         ]);
     }
 
@@ -161,5 +164,24 @@ class LocationStockShortcode {
             }
         }
         return [];
+    }
+
+    private function getVariationStocksForWarehouse(int $warehouse_id): array {
+        if (!$warehouse_id || !is_product()) {
+            return [];
+        }
+
+        $product = wc_get_product(get_queried_object_id());
+        if (!$product || !$product->is_type('variable')) {
+            return [];
+        }
+
+        $stocks = [];
+        foreach ($product->get_children() as $variation_id) {
+            $qty = get_post_meta($variation_id, 'wcmlim_stock_at_' . $warehouse_id, true);
+            $stocks[$variation_id] = $qty !== '' && $qty !== false ? (int) $qty : null;
+        }
+
+        return $stocks;
     }
 }

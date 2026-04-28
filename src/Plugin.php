@@ -20,6 +20,7 @@ use Socomarca\RandomERP\Admin\ProductFilterAdmin;
 use Socomarca\RandomERP\Ajax\LocationMappingAjaxHandler;
 use Socomarca\RandomERP\Filters\CheckoutShippingFilter;
 use Socomarca\RandomERP\Filters\LocationProductFilter;
+use Socomarca\RandomERP\Filters\LocationStockFilter;
 use Socomarca\RandomERP\Filters\ProductVisibilityFilter;
 use Socomarca\RandomERP\Services\DocumentService;
 use Socomarca\RandomERP\Services\CronSyncService;
@@ -43,7 +44,6 @@ class Plugin {
     }
     
     private function init() {
-        error_log('Socomarca ERP: Plugin::init() iniciado');
         
         
         $this->initializeComponents();
@@ -51,11 +51,9 @@ class Plugin {
         
         $this->registerHooks();
         
-        error_log('Socomarca ERP: Plugin::init() completado');
     }
     
     private function initializeComponents() {
-        error_log('Socomarca ERP: Inicializando componentes...');
         
         
         new AuthAjaxHandler();
@@ -85,12 +83,12 @@ class Plugin {
 
         new LocationStockShortcode();
         new LocationProductFilter();
+        new LocationStockFilter();
         new ProductVisibilityFilter();
         new CheckoutShippingFilter();
         new MultilocationBlockFix();
         new ProductPageCustomizer();
         
-        error_log('Socomarca ERP: Componentes inicializados exitosamente');
     }
     
     private function registerHooks() {
@@ -112,21 +110,18 @@ class Plugin {
         $this->createDatabaseTables();
         $this->setDefaultOptions();
         
-        error_log('Socomarca Random ERP Plugin: Activado');
     }
     
     public function deactivate() {
         
         $this->cleanupScheduledTasks();
         
-        error_log('Socomarca Random ERP Plugin: Desactivado');
     }
     
     public static function uninstall() {
         
         self::removePluginData();
         
-        error_log('Socomarca Random ERP Plugin: Desinstalado');
     }
     
     private function createDatabaseTables() {
