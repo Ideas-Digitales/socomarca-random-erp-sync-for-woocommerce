@@ -110,15 +110,27 @@ class ProductPageCustomizer {
             return;
         }
 
-        $sku        = $product->get_sku();
-        $stock_qty  = $this->resolveStockQuantity($product);
-        $categories = $this->resolveCategoryList($product);
+        // Para productos variables, no mostrar stock del padre (el stock se mostrará cuando se seleccione variación)
+        if ($product->get_type() === 'variable') {
+            error_log('[SM-PRODUCT-META] Product ' . $product->get_id() . ' is variable, skipping stock display');
+            // Mostrar solo SKU y categorías para el producto padre
+            $sku        = $product->get_sku();
+            $categories = $this->resolveCategoryList($product);
+        } else {
+            $sku        = $product->get_sku();
+            $categories = $this->resolveCategoryList($product);
+            $location_stock = $this->getLocationStock($product);
+        }
 
         ?>
         <div class="sm-product-extra-meta">
-            <?php if ($stock_qty !== null): ?>
+            <?php if ($product->get_type() !== 'variable' && isset($location_stock)): ?>
                 <div class="sm-meta-item sm-stock">
-                    <strong>Stock</strong> <?php echo esc_html($stock_qty); ?>
+                    <?php if ($location_stock === 0): ?>
+                        <span style="color: #d32f2f; font-weight: 600;">Sin stock en esta ubicación</span>
+                    <?php else: ?>
+                        <strong>Stock</strong> <?php echo esc_html($location_stock); ?>
+                    <?php endif; ?>
                 </div>
             <?php endif; ?>
 
@@ -135,6 +147,43 @@ class ProductPageCustomizer {
             <?php endif; ?>
         </div>
         <?php
+    }
+
+    /**
+     * Obtiene el stock del producto en la ubicación seleccionada
+     */
+    private function getLocationStock(\WC_Product $product): ?int {
+        // Obtener la ubicación seleccionada - IMPORTANTE: verificar cookie primero (más actual después de cambio)
+        $location_id = null;
+        $cookie_value = isset($_COOKIE['sm_selected_location']) ? $_COOKIE['sm_selected_location'] : 'no cookie';
+        $session_value = isset($_SESSION['multiloca_selected_location_id']) ? $_SESSION['multiloca_selected_location_id'] : 'no session';
+
+        // Primero revisar la cookie (se actualiza cuando el usuario cambia de ubicación)
+        if (isset($_COOKIE['sm_selected_location'])) {
+            $data = json_decode(stripslashes($_COOKIE['sm_selected_location']), true);
+            if (isset($data['warehouse_id']) && $data['warehouse_id']) {
+                $location_id = (int) $data['warehouse_id'];
+            }
+        }
+
+        // Fallback a sesión si no hay cookie
+        if (!$location_id && isset($_SESSION['multiloca_selected_location_id'])) {
+            $location_id = (int) $_SESSION['multiloca_selected_location_id'];
+        }
+
+        error_log('[SM-LOCATION-STOCK-DEBUG] Product ' . $product->get_id() . ', cookie=' . $cookie_value . ', session=' . $session_value . ', resolved_location_id=' . ($location_id ?? 'null'));
+
+        if (!$location_id) {
+            return null;
+        }
+
+        // Obtener el stock en esa ubicación
+        $meta_key = 'wcmlim_stock_at_' . $location_id;
+        $stock = (int) get_post_meta($product->get_id(), $meta_key, true);
+
+        error_log('[SM-LOCATION-STOCK] Product ' . $product->get_id() . ', location_id=' . $location_id . ', meta_key=' . $meta_key . ', stock=' . $stock);
+
+        return $stock;
     }
 
     public function displayLeafCategory(): void {
