@@ -8,7 +8,7 @@ class ProductService extends BaseApiService {
     
     public function getProducts() {
                 
-        $products = $this->makeApiRequest('/productos');
+        $products = $this->makeApiRequest('/productos?tipr=FPN');
         
         if ($products !== false) {
             return [

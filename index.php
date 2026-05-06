@@ -5,8 +5,8 @@
   Description: Sincroniza los productos de WooCommerce con Random ERP para Socomarca
   Author: Javier Aguero
   Version: 1.0.1
-  Requires at least: WP 6.0
-  Tested up to: WP 6.8
+  Requires at least: 6.0
+  Tested up to: 6.8
   Requires PHP: 8.0
   Text Domain: socomarca-random-erp-sync-for-woocommerce
   Author URI: https://ideasdigitales.cl/
@@ -14,10 +14,8 @@
  */
 
 if (!defined('ABSPATH')) {
-    exit; 
+    exit;
 }
-
-file_put_contents('/tmp/socomarca-debug.log', "Plugin cargándose: " . date('Y-m-d H:i:s') . "\n", FILE_APPEND);
 
 define('SOCOMARCA_ERP_PLUGIN_FILE', __FILE__);
 define('SOCOMARCA_ERP_PLUGIN_DIR', plugin_dir_path(__FILE__));
@@ -33,13 +31,6 @@ if (!class_exists('WooCommerce')) {
 
 }
 
-if (file_exists(SOCOMARCA_ERP_PLUGIN_DIR . 'vendor/autoload.php')) {
-    require_once SOCOMARCA_ERP_PLUGIN_DIR . 'vendor/autoload.php';
-
-} else {
-
-}
-
 require_once SOCOMARCA_ERP_PLUGIN_DIR . 'src/Autoloader.php';
 Socomarca\RandomERP\Autoloader::getInstance()->register();
 
@@ -47,7 +38,8 @@ use Socomarca\RandomERP\Plugin;
 
 add_action('plugins_loaded', function() {
 
-    
+    error_log('SOCOMARCA: plugins_loaded fired, PHP=' . PHP_VERSION . ', WC=' . (class_exists('WooCommerce') ? 'yes' : 'no'));
+
     if (version_compare(PHP_VERSION, '8.0', '<')) {
     
         add_action('admin_notices', function() {
@@ -58,10 +50,10 @@ add_action('plugins_loaded', function() {
                     
             Plugin::getInstance();
         
-        } catch (Exception $e) {
-        
+        } catch (\Throwable $e) {
+
             add_action('admin_notices', function() use ($e) {
-                echo '<div class="error"><p>Error en Socomarca ERP Plugin: ' . esc_html($e->getMessage()) . '</p></div>';
+                echo '<div class="error"><p>Error en Socomarca ERP Plugin: [' . get_class($e) . '] ' . esc_html($e->getMessage()) . ' en ' . esc_html($e->getFile()) . ':' . $e->getLine() . '</p></div>';
             });
         }
     }
@@ -69,20 +61,16 @@ add_action('plugins_loaded', function() {
 
 
 
-function dd($data) {
-    echo '<pre>';
-    print_r($data);
-    echo '</pre>';
-    die();
+if (!function_exists('dd')) {
+    function dd($data) {
+        echo '<pre>';
+        print_r($data);
+        echo '</pre>';
+        die();
+    }
 }
 
 add_filter( 'woocommerce_is_checkout_block_default', '__return_false' );
-
-
-//Activa el modo debug
-error_reporting(1);
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
 
 
 add_action( 'get_custom_logo', 'add_custom_text_before_shop', 15 );

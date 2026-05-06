@@ -390,5 +390,11 @@ body.single-product .woocommerce div.product form.cart div.quantity {
 }
 
 .variation-Location, .multiloca-message.woocommerce-message, .vi-wcaio-sidebar-cart-pd-meta {
-	/* display: none !important; */
+	display: none !important;
+}
+
+.sm-stock-row-error td:nth-child(3) {
+    background: #ffebee;
+    font-weight: 600;
+    color: red;
 }
