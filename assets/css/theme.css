@@ -398,3 +398,29 @@ body.single-product .woocommerce div.product form.cart div.quantity {
     font-weight: 600;
     color: red;
 }
+
+/* Botón Sin Stock */
+button.single_add_to_cart_button.sm-out-of-stock,
+.single_add_to_cart_button.sm-out-of-stock,
+input.single_add_to_cart_button.sm-out-of-stock {
+    background: #e0e0e0 !important;
+    color: #999 !important;
+    border-color: #ccc !important;
+    cursor: not-allowed !important;
+    opacity: 0.7 !important;
+    pointer-events: none !important;
+}
+
+button.single_add_to_cart_button.sm-out-of-stock:hover,
+.single_add_to_cart_button.sm-out-of-stock:hover,
+input.single_add_to_cart_button.sm-out-of-stock:hover {
+    background: #e0e0e0 !important;
+    color: #999 !important;
+}
+
+.single-product input.qty.disabled,
+.single-product select.disabled {
+    background-color: #f5f5f5 !important;
+    cursor: not-allowed !important;
+    opacity: 0.6 !important;
+}

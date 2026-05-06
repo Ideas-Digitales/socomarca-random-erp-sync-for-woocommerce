@@ -27,6 +27,7 @@ use Socomarca\RandomERP\Services\CronSyncService;
 use Socomarca\RandomERP\Shortcodes\LocationStockShortcode;
 use Socomarca\RandomERP\Compat\MultilocationBlockFix;
 use Socomarca\RandomERP\Frontend\ProductPageCustomizer;
+use Socomarca\RandomERP\Frontend\ProductStockValidator;
 
 class Plugin {
     
@@ -88,6 +89,7 @@ class Plugin {
         new CheckoutShippingFilter();
         new MultilocationBlockFix();
         new ProductPageCustomizer();
+        new ProductStockValidator();
         
     }
     
