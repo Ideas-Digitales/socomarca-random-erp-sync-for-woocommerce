@@ -124,7 +124,7 @@ class ProductPageCustomizer {
 
         ?>
         <div class="sm-product-extra-meta">
-            <?php if ($product->get_type() !== 'variable' && isset($location_stock)): ?>
+            <?php if ($product->get_type() == 'variable'): ?>
                 <div class="sm-meta-item sm-stock">
                     <?php if ($location_stock === 0): ?>
                         <span style="color: #d32f2f; font-weight: 600;">Sin stock en esta ubicación</span>

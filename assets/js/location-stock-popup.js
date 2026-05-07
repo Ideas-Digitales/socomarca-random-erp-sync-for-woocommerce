@@ -88,6 +88,14 @@
 
         restoreFromConfig: function () {
             var hasCookie = !!SmLocationPopup.parseCookie();
+
+            // Si el producto no tiene stock en la ubicación por defecto, no pre-seleccionar
+            // El usuario debe elegir una bodega manualmente que tenga stock
+            if (!hasCookie && typeof window.smProductHasStock !== 'undefined' && !window.smProductHasStock) {
+                console.log('[SM-LOCATION] Producto sin stock, no pre-seleccionando ubicación');
+                return;
+            }
+
             var regionId  = hasCookie ? sm_location_popup.selected_region : sm_location_popup.default_region;
             var comunaId  = hasCookie ? sm_location_popup.selected_comuna  : sm_location_popup.default_comuna;
 
@@ -186,6 +194,8 @@
             var regionId     = SmLocationPopup.selectedRegionId;
             var regionName   = SmLocationPopup.selectedRegionName;
 
+            console.log('[SM-LOCATION] confirmSelection called with warehouseId=' + warehouseId + ', regionName=' + regionName + ', comunaName=' + comunaName);
+
             if (!comunaId) return;
 
             var prevCookie       = SmLocationPopup.parseCookie();
@@ -245,6 +255,7 @@
             };
 
             var doReload = function () {
+                console.log('[SM-LOCATION] doReload called, will navigate to new location');
                 showReloadOverlay();
                 // WooCommerce agrega un beforeunload en el checkout que muestra "Leave site?".
                 // Lo removemos para que la recarga sea inmediata y sin dialogo.
@@ -258,6 +269,14 @@
                 url.searchParams.delete('quantity');
                 url.searchParams.delete('variation_id');
                 var targetUrl = url.toString();
+                console.log('[SM-LOCATION] Navigating to: ' + targetUrl);
+
+                // Disparar evento personalizado antes de recargar
+                console.log('[SM-LOCATION] Firing sm_location_changed event with warehouseId=' + warehouseId);
+                $(document).trigger('sm_location_changed', {
+                    warehouse_id: warehouseId,
+                    location_name: comunaName
+                });
 
                 if (warehouseId) {
                     $.ajax({

@@ -18,6 +18,8 @@ class CartWarehouseSwitchHandler extends BaseAjaxHandler {
         add_action('wp_ajax_nopriv_sm_switch_warehouse_cart', [$this, 'handle']);
         add_action('wp_ajax_sm_cart_stock_preview',           [$this, 'handlePreview']);
         add_action('wp_ajax_nopriv_sm_cart_stock_preview',    [$this, 'handlePreview']);
+        add_action('wp_ajax_sm_validate_variation_stock',     [$this, 'validateVariationStock']);
+        add_action('wp_ajax_nopriv_sm_validate_variation_stock', [$this, 'validateVariationStock']);
         // Prioridad 1 para ejecutar antes del add_to_cart_action de WC (tambien en init).
         add_action('init', [$this, 'suppressAddToCartAfterSwitch'], 1);
     }
@@ -208,5 +210,77 @@ class CartWarehouseSwitchHandler extends BaseAjaxHandler {
         }
 
         wp_send_json_success(['items' => $items, 'empty' => false]);
+    }
+
+    /**
+     * Valida si una variación tiene stock en la bodega seleccionada.
+     * Utilizado cuando se selecciona una variación en la página del producto.
+     */
+    public function validateVariationStock(): void {
+        $variation_id = intval($_POST['variation_id'] ?? 0);
+        $product_id   = intval($_POST['product_id'] ?? 0);
+        $warehouse_id = intval($_POST['warehouse_id'] ?? 0);
+
+        error_log('[SM-VARIATION-STOCK-REQUEST] Received request: product_id=' . $product_id . ', variation_id=' . $variation_id . ', warehouse_id=' . $warehouse_id);
+
+        if (!$variation_id || !$product_id) {
+            error_log('[SM-VARIATION-STOCK] Error: Missing variation_id or product_id');
+            wp_send_json_error(['message' => 'Parametros invalidos']);
+            return;
+        }
+
+        // Si no viene warehouse_id en POST, intentar obtenerlo de sesion/cookie
+        if (!$warehouse_id) {
+            $warehouse_id = $this->getSelectedWarehouse();
+            error_log('[SM-VARIATION-STOCK] warehouse_id from session/cookie: ' . $warehouse_id);
+        }
+
+        if (!$warehouse_id) {
+            error_log('[SM-VARIATION-STOCK] Error: No warehouse_id found');
+            wp_send_json_error(['message' => 'Bodega no seleccionada']);
+            return;
+        }
+
+        // Obtener stock y disponibilidad
+        $meta_key_stock = 'wcmlim_stock_at_' . $warehouse_id;
+        $meta_key_avail = 'wcmlim_product_availability_at_' . $warehouse_id;
+
+        $raw_stock_value = get_post_meta($variation_id, $meta_key_stock, true);
+        $stock = intval($raw_stock_value);
+        $avail = get_post_meta($variation_id, $meta_key_avail, true);
+
+        error_log('[SM-VARIATION-STOCK-DEBUG] Checking variation ' . $variation_id . ' in warehouse ' . $warehouse_id);
+        error_log('[SM-VARIATION-STOCK-DEBUG] meta_key_stock=' . $meta_key_stock . ', raw_value=' . var_export($raw_stock_value, true) . ', stock=' . $stock);
+        error_log('[SM-VARIATION-STOCK-DEBUG] meta_key_avail=' . $meta_key_avail . ', avail=' . var_export($avail, true));
+
+        $has_stock = ($avail === 'yes' && $stock > 0);
+
+        error_log('[SM-VARIATION-STOCK-RESULT] variation_id=' . $variation_id . ', warehouse_id=' . $warehouse_id . ', has_stock=' . ($has_stock ? 'true' : 'false') . ', stock_qty=' . $stock);
+
+        wp_send_json_success([
+            'has_stock'   => $has_stock,
+            'stock'       => $stock,
+            'availability' => $avail,
+            'warehouse_id' => $warehouse_id,
+            'message'     => $has_stock ? '' : 'Sin stock en esta ubicacion'
+        ]);
+    }
+
+    /**
+     * Obtiene la bodega seleccionada actualmente (sesion o cookie).
+     */
+    private function getSelectedWarehouse(): int {
+        if (isset($_SESSION['multiloca_selected_location_id'])) {
+            return (int) $_SESSION['multiloca_selected_location_id'];
+        }
+
+        if (isset($_COOKIE['sm_selected_location'])) {
+            $data = json_decode(stripslashes($_COOKIE['sm_selected_location']), true);
+            if (isset($data['warehouse_id']) && $data['warehouse_id']) {
+                return (int) $data['warehouse_id'];
+            }
+        }
+
+        return 0;
     }
 }
