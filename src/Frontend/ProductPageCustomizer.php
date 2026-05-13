@@ -110,23 +110,20 @@ class ProductPageCustomizer {
             return;
         }
 
+        $sku        = $product->get_sku();
+        $categories = $this->resolveCategoryList($product);
+        $location_stock = $this->getLocationStock($product);
+
         // Para productos variables, no mostrar stock del padre (el stock se mostrará cuando se seleccione variación)
         if ($product->get_type() === 'variable') {
-            error_log('[SM-PRODUCT-META] Product ' . $product->get_id() . ' is variable, skipping stock display');
-            // Mostrar solo SKU y categorías para el producto padre
-            $sku        = $product->get_sku();
-            $categories = $this->resolveCategoryList($product);
-        } else {
-            $sku        = $product->get_sku();
-            $categories = $this->resolveCategoryList($product);
-            $location_stock = $this->getLocationStock($product);
+            error_log('[SM-PRODUCT-META] Product ' . $product->get_id() . ' is variable, stock display will be updated by JS');
         }
 
         ?>
         <div class="sm-product-extra-meta">
             <?php if ($product->get_type() == 'variable'): ?>
                 <div class="sm-meta-item sm-stock">
-                    <?php if ($location_stock === 0): ?>
+                    <?php if ($location_stock === 0 || $location_stock === null): ?>
                         <span style="color: #d32f2f; font-weight: 600;">Sin stock en esta ubicación</span>
                     <?php else: ?>
                         <strong>Stock</strong> <?php echo esc_html($location_stock); ?>

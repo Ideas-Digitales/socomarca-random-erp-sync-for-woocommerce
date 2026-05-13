@@ -1,5 +1,6 @@
 vendor/
 CLAUDE.md
+GEMINI.md
 .claude
 composer.lock
 logs/

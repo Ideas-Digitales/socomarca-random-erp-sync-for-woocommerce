@@ -147,17 +147,11 @@
             function lockButton(message) {
                 console.log('[SM-GATING] LOCK button - message:', message);
                 $btn.prop('disabled', true).addClass('sm-btn-gated');
-                if ($stockEl.length) {
-                    $stockEl.html('<span style="color: #d32f2f; font-weight: 600;">' + message + '</span>');
-                }
             }
 
             function unlockButton() {
                 console.log('[SM-GATING] UNLOCK button');
                 $btn.prop('disabled', false).removeClass('sm-btn-gated');
-                if ($stockEl.length) {
-                    $stockEl.html(originalStockHtml);
-                }
             }
 
             function hideQuantity() {
@@ -334,37 +328,86 @@
             var stocks = (typeof sm_location_popup !== 'undefined' && sm_location_popup.variation_stocks)
                 ? sm_location_popup.variation_stocks
                 : null;
+            var warehouseId = (typeof sm_location_popup !== 'undefined' && sm_location_popup.selected_warehouse_id)
+                ? parseInt(sm_location_popup.selected_warehouse_id, 10)
+                : null;
             $stockEl.hide();
 
             $(document).on('found_variation.smstock', function (e, variation) {
                 var vid = String(variation.variation_id);
                 var qty = (stocks && stocks[vid] !== undefined && stocks[vid] !== null)
-                    ? stocks[vid]
+                    ? parseInt(stocks[vid], 10)
                     : null;
 
+                console.log('[SM-STOCK-DISPLAY] Variation ' + vid + ' - qty: ' + qty + ' - warehouse: ' + warehouseId + ' - is_in_stock: ' + variation.is_in_stock);
+
+                // Si tenemos datos de stock de la ubicacion, usarlos
                 if (qty !== null) {
-                    $stockEl.html('<strong>Stock</strong> ' + qty).show();
-                } else if (variation.is_in_stock) {
+                    if (qty > 0) {
+                        $stockEl.html('<strong>Stock</strong> ' + qty).show();
+                    } else {
+                        $stockEl.html('<span style="color: #d32f2f; font-weight: 600;">Sin stock en esta ubicacion</span>').show();
+                    }
+                    SmVariationsHelper.updateQtyMax(qty);
+                }
+                // Si no hay datos de ubicacion pero el warehouse esta seleccionado, consultar servidor
+                else if (warehouseId) {
+                    $stockEl.html('Cargando stock...').show();
+                    SmVariationsHelper.fetchVariationStock(variation.variation_id, warehouseId, vid);
+                }
+                // Si no hay warehouse seleccionado, mostrar stock global
+                else if (variation.is_in_stock) {
                     $stockEl.html('<strong>Stock</strong> Disponible').show();
                 } else {
-                    $stockEl.html('<strong>Stock</strong> Sin stock').show();
-                }
-
-                if (qty !== null) {
-                    setTimeout(function () {
-                        var $qty = $('input.qty');
-                        $qty.attr('max', qty);
-                        var current = parseInt($qty.val(), 10) || 1;
-                        if (current > qty) {
-                            $qty.val(qty > 0 ? qty : 0).trigger('change');
-                        }
-                    }, 0);
+                    $stockEl.html('<span style="color: #d32f2f; font-weight: 600;">Sin stock en esta ubicacion</span>').show();
                 }
             });
 
             $(document).on('reset_data.smstock', function () {
                 $stockEl.hide();
                 $('input.qty').removeAttr('max');
+            });
+        },
+
+        updateQtyMax: function (qty) {
+            setTimeout(function () {
+                var $qty = $('input.qty');
+                $qty.attr('max', qty);
+                var current = parseInt($qty.val(), 10) || 1;
+                if (current > qty) {
+                    $qty.val(qty > 0 ? qty : 0).trigger('change');
+                }
+            }, 0);
+        },
+
+        fetchVariationStock: function (variationId, warehouseId, vid) {
+            var $stockEl = $('.sm-meta-item.sm-stock');
+            $.ajax({
+                url: (typeof sm_location_popup !== 'undefined' ? sm_location_popup.ajax_url : ajaxurl),
+                type: 'POST',
+                data: {
+                    action: 'sm_get_variation_stock',
+                    variation_id: variationId,
+                    warehouse_id: warehouseId
+                },
+                success: function(response) {
+                    console.log('[SM-STOCK-DISPLAY] Server response:', response);
+                    if (response.success && response.data) {
+                        var qty = response.data.stock;
+                        if (qty > 0) {
+                            $stockEl.html('<strong>Stock</strong> ' + qty).show();
+                        } else {
+                            $stockEl.html('<span style="color: #d32f2f; font-weight: 600;">Sin stock en esta ubicacion</span>').show();
+                        }
+                        SmVariationsHelper.updateQtyMax(qty);
+                    } else {
+                        $stockEl.html('<span style="color: #d32f2f; font-weight: 600;">Sin stock en esta ubicacion</span>').show();
+                    }
+                },
+                error: function() {
+                    console.error('[SM-STOCK-DISPLAY] Error fetching stock');
+                    $stockEl.html('<span style="color: #d32f2f; font-weight: 600;">Sin stock en esta ubicacion</span>').show();
+                }
             });
         },
     };
