@@ -33,16 +33,26 @@ class StockService extends BaseApiService {
             $grouped[$kopr][] = $entry;
         }
 
-        $items = array_values($grouped);
+        // FILTRAR SOLO EXISTENTES EN LA TIENDA
+        global $wpdb;
+        $existing_skus = $wpdb->get_col("SELECT meta_value FROM $wpdb->postmeta WHERE meta_key = '_sku' AND meta_value != ''");
+        $existing_skus_map = array_flip($existing_skus);
 
-        update_option('sm_stock_cache', $items);
+        $filtered_grouped = [];
+        foreach ($grouped as $kopr => $entries) {
+            if (isset($existing_skus_map[$kopr])) {
+                $filtered_grouped[] = $entries;
+            }
+        }
+
+        update_option('sm_stock_cache', $filtered_grouped);
         update_option('sm_stock_total_processed', 0);
         update_option('sm_stock_total_updated', 0);
 
         return [
             'success' => true,
-            'message' => count($items) . ' productos con stock obtenidos. Iniciando procesamiento...',
-            'total'   => count($items),
+            'message' => count($filtered_grouped) . ' productos encontrados en la tienda para actualizar stock. Iniciando...',
+            'total'   => count($filtered_grouped),
         ];
     }
 

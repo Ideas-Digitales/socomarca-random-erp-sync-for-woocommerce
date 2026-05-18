@@ -353,6 +353,18 @@
                     </tr>
                     <tr>
                         <th>
+                            Productos sin precio
+                        </th>
+                        <td>
+                            <label>
+                                <input name="sm_hide_zero_price" type="checkbox" id="sm_hide_zero_price" value="1" <?php checked($hide_zero_price, true); ?> />
+                                Ocultar productos con precio $0 o sin precio
+                            </label>
+                            <p class="description">Cuando esta activo, los productos con precio $0 o que no tengan precio definido no se mostrarán en la tienda y devolverán un error 404 al intentar acceder directamente.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
                             Ubicacion por defecto
                         </th>
                         <td>

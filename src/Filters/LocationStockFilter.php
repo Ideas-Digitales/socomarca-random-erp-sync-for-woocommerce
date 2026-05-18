@@ -28,7 +28,20 @@ class LocationStockFilter {
             return $quantity;
         }
 
-        $location_id = intval($_SESSION['multiloca_selected_location_id'] ?? 0);
+        $location_id = 0;
+        
+        // Prioridad 1: Sesión (Multiloca)
+        if (isset($_SESSION['multiloca_selected_location_id'])) {
+            $location_id = (int) $_SESSION['multiloca_selected_location_id'];
+        } 
+        // Prioridad 2: Cookie (Socomarca)
+        elseif (isset($_COOKIE['sm_selected_location'])) {
+            $data = json_decode(stripslashes($_COOKIE['sm_selected_location']), true);
+            if (isset($data['warehouse_id'])) {
+                $location_id = (int) $data['warehouse_id'];
+            }
+        }
+
         if (!$location_id) {
             return $quantity;
         }

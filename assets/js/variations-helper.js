@@ -9,8 +9,8 @@
 
     var SmVariationsHelper = {
         init: function () {
-            if (typeof window.smProductHasStock !== 'undefined' && !window.smProductHasStock) {
-                console.log('[SM-VARIATIONS] Producto sin stock, deshabilitando variations helper');
+            if (typeof window.smProductHasStock !== 'undefined' && window.smProductHasStock === false) {
+                console.log('[SM-VARIATIONS] Producto sin stock confirmado, deshabilitando variations helper');
                 this.hideQuantityCompletely();
                 return;
             }
@@ -66,17 +66,27 @@
             if (typeof sm_location_popup === 'undefined') return;
             var warehouseId = parseInt(sm_location_popup.selected_warehouse_id, 10);
             if (!warehouseId) return;
+            
+            console.log('[SM-VARIATIONS] Attempting to auto-select warehouse:', warehouseId);
+            
             var attempts = 0;
             var interval = setInterval(function () {
-                var $row = $('[data-location-id="' + warehouseId + '"]');
+                var $row = $('.multiloca-lite-table tr[data-location-id="' + warehouseId + '"]');
                 if ($row.length) {
                     clearInterval(interval);
+                    console.log('[SM-VARIATIONS] Found row for warehouse ' + warehouseId + ', clicking...');
+                    
+                    // Simular click real para que Multiloca Lite procese la selección
+                    $row.trigger('click');
+                    
+                    // Asegurar visual
                     $('.multiloca-location-selected').removeClass('multiloca-location-selected');
                     $row.addClass('multiloca-location-selected');
-                } else if (++attempts > 20) {
+                } else if (++attempts > 30) {
                     clearInterval(interval);
+                    console.warn('[SM-VARIATIONS] Could not find row for warehouse ' + warehouseId + ' after 30 attempts');
                 }
-            }, 150);
+            }, 200);
         },
 
         initRelatedSlider: function () {
@@ -116,12 +126,11 @@
         },
 
         initAddToCartGating: function () {
-            if (!$('.variations_form').length) return;
-
             var $form = $('form.cart');
             var $btn = $('button.single_add_to_cart_button');
             if (!$btn.length) return;
 
+            var isVariable = $('.variations_form').length > 0;
             var $stockEl = $('.sm-meta-item.sm-stock');
             var originalStockHtml = $stockEl.length ? $stockEl.html() : '';
 
@@ -156,8 +165,12 @@
 
             function hideQuantity() {
                 console.log('[SM-GATING] HIDE quantity');
-                $form.find('.quantity')[0].setAttribute('style', 'display: none !important');
-                $form.find('input.qty')[0].setAttribute('style', 'display: none !important');
+                var $qty = $form.find('.quantity');
+                if ($qty.length) $qty[0].setAttribute('style', 'display: none !important');
+                
+                var $qtyInput = $form.find('input.qty');
+                if ($qtyInput.length) $qtyInput[0].setAttribute('style', 'display: none !important');
+                
                 $form.find('.sm-quantity-btn').each(function() {
                     $(this)[0].setAttribute('style', 'display: none !important');
                 });
@@ -165,23 +178,28 @@
 
             function showQuantity() {
                 console.log('[SM-GATING] SHOW quantity');
-                $form.find('.quantity')[0].removeAttribute('style');
-                $form.find('input.qty')[0].removeAttribute('style');
+                var $qty = $form.find('.quantity');
+                if ($qty.length) $qty[0].removeAttribute('style');
+                
+                var $qtyInput = $form.find('input.qty');
+                if ($qtyInput.length) $qtyInput[0].removeAttribute('style');
+                
                 $form.find('.sm-quantity-btn').each(function() {
                     $(this)[0].removeAttribute('style');
                 });
             }
 
-            function validateVariationStock(variationId) {
+            function validateStock(id, isVariation) {
                 var warehouseId = getSelectedWarehouse();
 
-                console.log('[SM-GATING] validateVariationStock', {
-                    variationId: variationId,
+                console.log('[SM-GATING] validateStock', {
+                    id: id,
+                    isVariation: isVariation,
                     productId: productId,
                     warehouseId: warehouseId
                 });
 
-                if (!variationId || !warehouseId || validatingStock) {
+                if (!id || !warehouseId || validatingStock) {
                     console.log('[SM-GATING] Skipping validation');
                     return;
                 }
@@ -193,28 +211,35 @@
                     url: (typeof sm_location_popup !== 'undefined' ? sm_location_popup.ajax_url : ajaxurl),
                     type: 'POST',
                     data: {
-                        action: 'sm_validate_variation_stock',
-                        variation_id: variationId,
-                        product_id: productId,
+                        action: isVariation ? 'sm_validate_variation_stock' : 'sm_get_variation_stock', // Reusamos el de variacion o el general
+                        variation_id: isVariation ? id : 0,
+                        product_id: isVariation ? productId : id,
                         warehouse_id: warehouseId
                     },
                     success: function(response) {
                         validatingStock = false;
 
-                        console.log('[SM-GATING] Response', {
-                            warehouse: warehouseId,
-                            has_stock: response.data.has_stock,
-                            stock: response.data.stock
-                        });
+                        console.log('[SM-GATING] Response', response);
 
-                        if (response.success && response.data.has_stock) {
+                        if (response.success && (response.data.has_stock || response.data.stock > 0)) {
                             console.log('[SM-GATING] TIENE stock');
                             unlockButton();
                             showQuantity();
+                            
+                            // Actualizar visual de stock para productos simples
+                            if (!isVariation && $stockEl.length) {
+                                $stockEl.html('<strong>Stock</strong> ' + response.data.stock).show();
+                                SmVariationsHelper.updateQtyMax(response.data.stock);
+                            }
                         } else {
                             console.log('[SM-GATING] SIN stock');
                             hideQuantity();
                             lockButton('Sin stock en esta ubicacion');
+                            
+                            // Actualizar visual de stock para productos simples
+                            if (!isVariation && $stockEl.length) {
+                                $stockEl.html('<span style="color: #d32f2f; font-weight: 600;">Sin stock en esta ubicacion</span>').show();
+                            }
                         }
                     },
                     error: function() {
@@ -227,41 +252,45 @@
             }
 
             function evaluate() {
-                var variationId = $('input[name="variation_id"]').val();
                 var warehouseId = getSelectedWarehouse();
-
-                console.log('[SM-GATING] evaluate', {
-                    variationId: variationId,
-                    warehouseId: warehouseId
-                });
-
-                if (variationId && warehouseId) {
-                    validateVariationStock(variationId);
+                
+                if (isVariable) {
+                    var variationId = $('input[name="variation_id"]').val();
+                    console.log('[SM-GATING] evaluate (variable)', { variationId: variationId, warehouseId: warehouseId });
+                    if (variationId && warehouseId) {
+                        validateStock(variationId, true);
+                    } else {
+                        hideQuantity();
+                        lockButton('Selecciona ubicacion y variacion');
+                    }
                 } else {
-                    console.log('[SM-GATING] Waiting for selection');
-                    hideQuantity();
-                    lockButton('Selecciona ubicacion y variacion');
+                    console.log('[SM-GATING] evaluate (simple)', { productId: productId, warehouseId: warehouseId });
+                    if (productId && warehouseId) {
+                        validateStock(productId, false);
+                    } else {
+                        hideQuantity();
+                        lockButton('Selecciona ubicacion');
+                    }
                 }
             }
 
-            // Eventos de variacion
-            $(document).on('found_variation', function() {
-                console.log('[SM-GATING] found_variation');
-                evaluate();
-            });
+            // Eventos de variacion (solo si es variable)
+            if (isVariable) {
+                $(document).on('found_variation', function() {
+                    console.log('[SM-GATING] found_variation');
+                    evaluate();
+                });
 
-            $(document).on('reset_data', function() {
-                console.log('[SM-GATING] reset_data');
-                hideQuantity();
-                lockButton('Selecciona la variacion');
-            });
+                $(document).on('reset_data', function() {
+                    console.log('[SM-GATING] reset_data');
+                    hideQuantity();
+                    lockButton('Selecciona la variacion');
+                });
+            }
 
             // Escuchar CLICKS en tabla de Multiloca
             $(document).on('click', '.multiloca-lite-table tbody tr', function() {
                 console.log('[SM-GATING] Multiloca location clicked');
-                var newWarehouseId = $(this).attr('data-location-id');
-                console.log('[SM-GATING] New warehouse:', newWarehouseId);
-
                 // Marcar como seleccionada
                 $('.multiloca-location-selected').removeClass('multiloca-location-selected');
                 $(this).addClass('multiloca-location-selected');
@@ -279,39 +308,23 @@
                     clearInterval(multilocaReady);
                     console.log('[SM-GATING] Multiloca table ready');
 
-                    // Manejar selector de variaciones - auto-seleccionar y ocultar si hay una sola
-                    var $variations = jQuery('.variations_form .variations');
-                    if ($variations.length) {
-                        var allSingleOption = true;
-
-                        $variations.find('select').each(function() {
-                            var $select = jQuery(this);
-                            var $options = $select.find('option[value!=""]');
-
-                            if ($options.length === 1) {
-                                console.log('[SM-GATING] Single option found in select, auto-selecting');
-                                var val = $options.val();
-                                $select.val(val).trigger('change');
-                                // Ocultar la row/variation-row
-                                $select.closest('tr')[0].setAttribute('style', 'display: none !important');
-                                $select.closest('.variation-row')[0].setAttribute('style', 'display: none !important');
-                            } else if ($options.length > 1) {
-                                allSingleOption = false;
-                            }
-                        });
-
-                        // Si todas las variaciones tienen una sola opcion, ocultar el contenedor
-                        if (allSingleOption && $variations.find('select').length > 0) {
-                            console.log('[SM-GATING] All variations have single option, hiding variations wrapper');
-                            $variations[0].setAttribute('style', 'display: none !important');
+                    // Marcar la primera fila de Multiloca como seleccionada si no hay seleccion previa
+                    if (!jQuery('.multiloca-location-selected').length) {
+                        var $selectedRow = null;
+                        
+                        // Intentar buscar la bodega que viene por defecto o por cookie
+                        if (typeof sm_location_popup !== 'undefined' && sm_location_popup.selected_warehouse_id) {
+                            $selectedRow = jQuery('.multiloca-lite-table tbody tr[data-location-id="' + sm_location_popup.selected_warehouse_id + '"]');
                         }
-                    }
-
-                    // Marcar la primera fila de Multiloca como seleccionada
-                    var $firstRow = jQuery('.multiloca-lite-table tbody tr:first');
-                    if ($firstRow.length && !jQuery('.multiloca-location-selected').length) {
-                        console.log('[SM-GATING] Marking first Multiloca row as selected');
-                        $firstRow.addClass('multiloca-location-selected');
+                        
+                        if (!$selectedRow || !$selectedRow.length) {
+                            $selectedRow = jQuery('.multiloca-lite-table tbody tr:first');
+                        }
+                        
+                        if ($selectedRow.length) {
+                            console.log('[SM-GATING] Marking location as selected');
+                            $selectedRow.addClass('multiloca-location-selected');
+                        }
                     }
 
                     // Evaluar después de un pequeño delay
@@ -320,6 +333,15 @@
                     }, 200);
                 }
             }, 100);
+
+            // Para productos simples, si ya tenemos warehouseId, evaluar de inmediato
+            if (!isVariable) {
+                var initialWarehouse = getSelectedWarehouse();
+                if (initialWarehouse) {
+                    console.log('[SM-GATING] Simple product with initial warehouse, evaluating...');
+                    evaluate();
+                }
+            }
         },
 
         initVariationStockDisplay: function () {

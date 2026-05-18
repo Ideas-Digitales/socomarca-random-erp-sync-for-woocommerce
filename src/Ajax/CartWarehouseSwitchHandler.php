@@ -65,12 +65,14 @@ class CartWarehouseSwitchHandler extends BaseAjaxHandler {
         $items_to_readd = [];
 
         foreach ($cart->get_cart() as $cart_item) {
+            $product_id   = intval($cart_item['product_id']);
             $variation_id = intval($cart_item['variation_id']);
             $quantity     = intval($cart_item['quantity']);
             $product_name = $cart_item['data']->get_name();
 
-            $stock = intval(get_post_meta($variation_id, 'wcmlim_stock_at_' . $new_warehouse_id, true));
-            $avail = get_post_meta($variation_id, 'wcmlim_product_availability_at_' . $new_warehouse_id, true);
+            $stock_post_id = $variation_id ?: $product_id;
+            $stock = intval(get_post_meta($stock_post_id, 'wcmlim_stock_at_' . $new_warehouse_id, true));
+            $avail = get_post_meta($stock_post_id, 'wcmlim_product_availability_at_' . $new_warehouse_id, true);
 
             if ($avail !== 'yes' || $stock <= 0) {
                 $results[] = [
@@ -79,7 +81,7 @@ class CartWarehouseSwitchHandler extends BaseAjaxHandler {
                 ];
             } elseif ($stock >= $quantity) {
                 $items_to_readd[] = [
-                    'product_id'   => intval($cart_item['product_id']),
+                    'product_id'   => $product_id,
                     'variation_id' => $variation_id,
                     'quantity'     => $quantity,
                     'variation'    => $cart_item['variation'],
@@ -91,7 +93,7 @@ class CartWarehouseSwitchHandler extends BaseAjaxHandler {
                 ];
             } else {
                 $items_to_readd[] = [
-                    'product_id'   => intval($cart_item['product_id']),
+                    'product_id'   => $product_id,
                     'variation_id' => $variation_id,
                     'quantity'     => $stock,
                     'variation'    => $cart_item['variation'],
@@ -223,8 +225,11 @@ class CartWarehouseSwitchHandler extends BaseAjaxHandler {
 
         error_log('[SM-VARIATION-STOCK-REQUEST] Received request: product_id=' . $product_id . ', variation_id=' . $variation_id . ', warehouse_id=' . $warehouse_id);
 
-        if (!$variation_id || !$product_id) {
-            error_log('[SM-VARIATION-STOCK] Error: Missing variation_id or product_id');
+        // Para productos simples, variation_id será 0
+        $target_id = $variation_id ?: $product_id;
+
+        if (!$target_id) {
+            error_log('[SM-VARIATION-STOCK] Error: No ID found for stock validation');
             wp_send_json_error(['message' => 'Parametros invalidos']);
             return;
         }
@@ -245,17 +250,17 @@ class CartWarehouseSwitchHandler extends BaseAjaxHandler {
         $meta_key_stock = 'wcmlim_stock_at_' . $warehouse_id;
         $meta_key_avail = 'wcmlim_product_availability_at_' . $warehouse_id;
 
-        $raw_stock_value = get_post_meta($variation_id, $meta_key_stock, true);
+        $raw_stock_value = get_post_meta($target_id, $meta_key_stock, true);
         $stock = intval($raw_stock_value);
-        $avail = get_post_meta($variation_id, $meta_key_avail, true);
+        $avail = get_post_meta($target_id, $meta_key_avail, true);
 
-        error_log('[SM-VARIATION-STOCK-DEBUG] Checking variation ' . $variation_id . ' in warehouse ' . $warehouse_id);
+        error_log('[SM-VARIATION-STOCK-DEBUG] Checking target ' . $target_id . ' in warehouse ' . $warehouse_id);
         error_log('[SM-VARIATION-STOCK-DEBUG] meta_key_stock=' . $meta_key_stock . ', raw_value=' . var_export($raw_stock_value, true) . ', stock=' . $stock);
         error_log('[SM-VARIATION-STOCK-DEBUG] meta_key_avail=' . $meta_key_avail . ', avail=' . var_export($avail, true));
 
         $has_stock = ($avail === 'yes' && $stock > 0);
 
-        error_log('[SM-VARIATION-STOCK-RESULT] variation_id=' . $variation_id . ', warehouse_id=' . $warehouse_id . ', has_stock=' . ($has_stock ? 'true' : 'false') . ', stock_qty=' . $stock);
+        error_log('[SM-VARIATION-STOCK-RESULT] target_id=' . $target_id . ', warehouse_id=' . $warehouse_id . ', has_stock=' . ($has_stock ? 'true' : 'false') . ', stock_qty=' . $stock);
 
         wp_send_json_success([
             'has_stock'   => $has_stock,

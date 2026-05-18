@@ -106,6 +106,7 @@ class AdminPages {
         }
         $hide_variation_selector = isset($_POST['sm_hide_variation_selector']) ? 1 : 0;
         $hide_warehouse_selector = isset($_POST['sm_hide_warehouse_selector']) ? 1 : 0;
+        $hide_zero_price = isset($_POST['sm_hide_zero_price']) ? 1 : 0;
         $asset_version = sanitize_text_field($_POST['sm_asset_version'] ?? SOCOMARCA_ERP_VERSION);
         $default_region = sanitize_text_field($_POST['sm_default_region'] ?? '');
         $default_comuna = sanitize_text_field($_POST['sm_default_comuna'] ?? '');
@@ -128,6 +129,7 @@ class AdminPages {
         update_option('sm_product_limit', $product_limit);
         update_option('sm_hide_variation_selector', $hide_variation_selector);
         update_option('sm_hide_warehouse_selector', $hide_warehouse_selector);
+        update_option('sm_hide_zero_price', $hide_zero_price);
         update_option('sm_asset_version', $asset_version);
         update_option('sm_default_region', $default_region);
         update_option('sm_default_comuna', $default_comuna);
@@ -139,6 +141,8 @@ class AdminPages {
         // Limpiar token automático al cambiar configuración
         delete_option('random_erp_token');
         
+        // Limpiar cache de productos ocultos
+        delete_transient('sm_hidden_product_ids');
         
         add_action('admin_notices', function() {
             echo '<div class="notice notice-success is-dismissible"><p>Configuración guardada correctamente.</p></div>';
@@ -166,6 +170,7 @@ class AdminPages {
             'product_limit' => intval(get_option('sm_product_limit', -1)),
             'hide_variation_selector' => get_option('sm_hide_variation_selector', false),
             'hide_warehouse_selector' => get_option('sm_hide_warehouse_selector', false),
+            'hide_zero_price' => get_option('sm_hide_zero_price', false),
             'asset_version' => get_option('sm_asset_version', SOCOMARCA_ERP_VERSION),
             'default_region' => get_option('sm_default_region', 'CL-RM'),
             'default_comuna' => get_option('sm_default_comuna', 'Santiago'),

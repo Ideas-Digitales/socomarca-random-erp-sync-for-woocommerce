@@ -44,12 +44,19 @@ class ProductStockValidator {
 
         $location_id = $this->getSelectedLocation();
         $product_id = $product->get_id();
-        $stock_info = $this->getProductStockInfo($product_id, $location_id);
+        
+        // Si no hay ubicación, no podemos validar stock, así que asumimos "desconocido" pero no bloqueamos de forma permanente
+        if (!$location_id) {
+            $has_stock = 'null';
+            $stock_qty = 0;
+            error_log('[SM-VALIDATOR-PHP] No location selected for product ' . $product_id);
+        } else {
+            $stock_info = $this->getProductStockInfo($product_id, $location_id);
+            $has_stock = $stock_info['has_stock'] ? 'true' : 'false';
+            $stock_qty = $stock_info['stock_qty'];
+            error_log('[SM-VALIDATOR-PHP] Rendering: product_id=' . $product_id . ', location_id=' . $location_id . ', has_stock=' . $has_stock . ', stock_qty=' . $stock_qty);
+        }
 
-        $has_stock = $stock_info['has_stock'] ? 'true' : 'false';
-
-        // Log en PHP
-        error_log('[SM-VALIDATOR-PHP] Rendering: product_id=' . $product_id . ', location_id=' . $location_id . ', has_stock=' . $has_stock . ', stock_qty=' . $stock_info['stock_qty']);
         ?>
         <script type="text/javascript">
         // Variable global para que location-stock-popup.js pueda acceder
@@ -61,12 +68,12 @@ class ProductStockValidator {
         (function ($) {
             $(document).ready(function () {
                 console.log('[SM-VALIDATOR] Iniciando validador de stock');
-                console.log('[SM-VALIDATOR] Product <?php echo $product_id; ?>, location <?php echo $location_id; ?>, has_stock: <?php echo $has_stock; ?>');
-
+                
                 var hasStock = <?php echo $has_stock; ?>;
+                var locationId = <?php echo $location_id; ?>;
 
-                if (!hasStock) {
-                    console.log('[SM-VALIDATOR] Producto sin stock, deshabilitando carrito');
+                if (locationId && hasStock === false) {
+                    console.log('[SM-VALIDATOR] Producto sin stock en ubicación seleccionada, deshabilitando carrito');
 
                     // Cambiar botón de compra
                     var $form = $('form.cart');

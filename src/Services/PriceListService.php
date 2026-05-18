@@ -26,17 +26,30 @@ class PriceListService extends BaseApiService {
         // Crear grupo B2B King si no existe
         $group_id = $this->createB2BKingGroup($priceLists);
 
-        // Guardar datos en cache para procesamiento por lotes
+        // Guardar datos en cache para procesamiento por lotes - FILTRAR SOLO EXISTENTES
         $datos = isset($priceLists['datos']) ? $priceLists['datos'] : [];
-        update_option('sm_price_lists_cache', $datos);
+        
+        global $wpdb;
+        $existing_skus = $wpdb->get_col("SELECT meta_value FROM $wpdb->postmeta WHERE meta_key = '_sku' AND meta_value != ''");
+        $existing_skus_map = array_flip($existing_skus);
+
+        $filtered_datos = [];
+        foreach ($datos as $item) {
+            $sku = $item['kopr'] ?? '';
+            if (!empty($sku) && isset($existing_skus_map[$sku])) {
+                $filtered_datos[] = $item;
+            }
+        }
+
+        update_option('sm_price_lists_cache', $filtered_datos);
         update_option('sm_price_lists_group_id', $group_id);
         update_option('sm_total_processed_prices', 0);
         update_option('sm_total_updated_prices', 0);
 
         return [
             'success' => true,
-            'message' => count($datos) . ' productos con precios obtenidos. Iniciando procesamiento...',
-            'total' => count($datos),
+            'message' => count($filtered_datos) . ' productos encontrados en la tienda para actualizar precios. Iniciando...',
+            'total' => count($filtered_datos),
             'group_id' => $group_id
         ];
     }
@@ -119,6 +132,7 @@ class PriceListService extends BaseApiService {
             delete_option('sm_price_lists_group_id');
             delete_option('sm_total_processed_prices');
             delete_option('sm_total_updated_prices');
+            delete_transient('sm_hidden_product_ids');
         }
 
         return [
@@ -148,93 +162,30 @@ class PriceListService extends BaseApiService {
         $products = wc_get_products(['sku' => $sku]);
 
         if (empty($products)) {
-            return ['success' => true, 'error' => null, 'updated' => false]; // Producto no existe, saltar
+            return ['success' => true, 'error' => null, 'updated' => false];
         }
 
         $product = $products[0];
         $updated = false;
 
-        // Recopilar todas las unidades del producto
-        $unidades_nombres = [];
+        // Obtener el precio desde los datos del ERP
         $unidades = $data['unidades'] ?? [];
-
-        foreach ($unidades as $unidad) {
-            if (!empty($unidad['nombre'])) {
-                $unidades_nombres[] = $unidad['nombre'];
-            }
+        $price = 0; // Por defecto 0 si no hay datos
+        
+        if (!empty($unidades) && isset($unidades[0]['prunneto'][0]['f'])) {
+            $price = $unidades[0]['prunneto'][0]['f'];
         }
 
-        // Actualizar el atributo "Unidad" del producto
-        if (!empty($unidades_nombres)) {
-            $attributes = $product->get_attributes();
-            $unidad_attribute = new \WC_Product_Attribute();
-            $unidad_attribute->set_id(0);
-            $unidad_attribute->set_name('Unidad');
-            $unidad_attribute->set_options($unidades_nombres);
-            $unidad_attribute->set_visible(true);
-            $unidad_attribute->set_variation(true);
-
-            $attributes['pa_unidad'] = $unidad_attribute;
-            $product->set_attributes($attributes);
-            $product->save();
+        $product->set_regular_price($price);
+        $product->set_price($price);
+        
+        if (!empty($unidades) && isset($unidades[0]['stockventa'])) {
+            $product->set_manage_stock(true);
+            $product->set_stock_quantity($unidades[0]['stockventa']);
         }
-
-        // Procesar variaciones
-        $variations = $this->get_product_variations($product->get_id());
-        $meta_name = "b2bking_product_pricetiers_group_" . $group_id;
-
-        foreach ($variations as $variation) {
-            $variation_object = wc_get_product($variation['id']);
-            if (!$variation_object) {
-                continue;
-            }
-
-            $variation_object->set_manage_stock(true);
-
-            // Encontrar la unidad que corresponde a esta variacion
-            $matching_unidad = $this->findMatchingUnit($variation, $unidades);
-
-            if ($matching_unidad) {
-                // Actualizar stock
-                $variation_object->set_stock_quantity($matching_unidad['stockventa'] ?? 0);
-
-                // Configurar precios B2B King
-                $prunneto = $matching_unidad['prunneto'] ?? [];
-                if (!empty($prunneto[0]['f'])) {
-                    update_post_meta($variation['id'], 'b2bking_regular_product_price_group_' . $group_id, $prunneto[0]['f']);
-                }
-
-                // Construir valores de precios escalonados
-                $b2b_king_values = "";
-                $high_price = 0;
-
-                foreach ($prunneto as $precio) {
-                    $min = $precio['min'] ?? 0;
-                    $f = $precio['f'] ?? 0;
-                    $b2b_king_values .= $min . ':' . $f . ';';
-
-                    if ($f > 0 && ($high_price == 0 || $f < $high_price)) {
-                        $high_price = $f;
-                    }
-                }
-
-                // Precio por defecto de la variacion
-                if ($high_price > 0) {
-                    $variation_object->set_regular_price($high_price);
-                }
-
-                $variation_object->save();
-
-                // Agregar precios escalonados B2B King
-                if (!empty($b2b_king_values)) {
-                    update_post_meta($variation['id'], $meta_name, $b2b_king_values);
-                }
-
-                $updated = true;
-            } else {
-                $variation_object->save();
-            }
-        }
+        
+        $product->save();
+        $updated = true;
 
         return ['success' => true, 'error' => null, 'updated' => $updated];
     }

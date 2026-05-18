@@ -252,9 +252,7 @@ class ProductService extends BaseApiService {
     }
     
     private function createNewProduct($product, $category_ids) {
-        // Siempre crear productos variables con variación "Unidad" = "UN"
-        $variations_data = $this->createDefaultVariations($product);
-        return $this->createVariableProduct($product, $category_ids, $variations_data);
+        return $this->createSimpleProduct($product, $category_ids);
     }
     
     private function createSimpleProduct($product, $category_ids) {
@@ -263,8 +261,9 @@ class ProductService extends BaseApiService {
         $new_product->set_sku($product['KOPR']);
         $new_product->set_status('publish');
         $new_product->set_catalog_visibility('visible');
-        $new_product->set_regular_price(10000); 
-        $new_product->set_manage_stock(false);
+        $new_product->set_manage_stock(true); // Habilitar gestión de stock para productos simples
+        $new_product->set_stock_quantity(0);
+        $new_product->set_regular_price(0); // Precio inicial 0 para que sea "comprable"
         
         if (!empty($category_ids)) {
             $new_product->set_category_ids($category_ids);
