@@ -10,9 +10,12 @@ class ProductVisibilityFilter {
 
     public function __construct() {
         add_action('woocommerce_product_query', [$this, 'applyExclusion']);
+        add_action('pre_get_posts', [$this, 'applyExclusionPreGetPosts']);
         add_filter('posts_where', [$this, 'addSqlWhereClause'], 10, 2);
         add_filter('woocommerce_related_products', [$this, 'filterRelatedProducts'], 10, 3);
-        add_action('template_redirect', [$this, 'handleZeroPrice404']);
+        add_filter('jet-engine/query-builder/query', [$this, 'filterJetEngineQuery']);
+        add_filter('jet-search/products/query-args', [$this, 'filterJetSearchProducts']);
+        add_filter('rest_post_query', [$this, 'filterRestPostQuery'], 10, 2);
     }
 
     private function getHiddenProductIds(): array {
@@ -95,6 +98,88 @@ class ProductVisibilityFilter {
         $query->set('post__not_in', array_unique(array_merge($existing, $hidden_ids)));
     }
 
+    public function applyExclusionPreGetPosts(\WP_Query $query): void {
+        if (is_admin()) {
+            return;
+        }
+
+        if ($query->is_singular()) {
+            return;
+        }
+
+        $post_type = $query->get('post_type');
+        $is_product_query = $post_type === 'product' ||
+                           (is_array($post_type) && in_array('product', $post_type)) ||
+                           $query->get('wc_query') === 'product_query' ||
+                           $query->get('s'); // Búsquedas
+
+        if (!$is_product_query) {
+            return;
+        }
+
+        $this->applyExclusion($query);
+    }
+
+    public function filterJetEngineQuery($query) {
+        if (!is_array($query) || !isset($query['post_type'])) {
+            return $query;
+        }
+
+        if ($query['post_type'] !== 'product') {
+            return $query;
+        }
+
+        $hidden_ids = $this->getHiddenProductIds();
+        if (empty($hidden_ids)) {
+            return $query;
+        }
+
+        $existing = $query['post__not_in'] ?? [];
+        $query['post__not_in'] = array_unique(array_merge($existing, $hidden_ids));
+
+        return $query;
+    }
+
+    public function filterJetSearchProducts($args) {
+        if (!is_array($args)) {
+            return $args;
+        }
+
+        if (($args['post_type'] ?? null) !== 'product') {
+            return $args;
+        }
+
+        $hidden_ids = $this->getHiddenProductIds();
+        if (empty($hidden_ids)) {
+            return $args;
+        }
+
+        $existing = $args['post__not_in'] ?? [];
+        $args['post__not_in'] = array_unique(array_merge($existing, $hidden_ids));
+
+        return $args;
+    }
+
+    public function filterRestPostQuery($prepared_args, $request) {
+        if (!is_array($prepared_args)) {
+            return $prepared_args;
+        }
+
+        if (($prepared_args['post_type'] ?? null) !== 'product') {
+            return $prepared_args;
+        }
+
+        $hidden_ids = $this->getHiddenProductIds();
+        if (empty($hidden_ids)) {
+            return $prepared_args;
+        }
+
+        $existing = $prepared_args['post__not_in'] ?? [];
+        $prepared_args['post__not_in'] = array_unique(array_merge($existing, $hidden_ids));
+
+        return $prepared_args;
+    }
+
     public function addSqlWhereClause(string $where, \WP_Query $query): string {
         if (is_admin()) {
             return $where;
@@ -105,6 +190,10 @@ class ProductVisibilityFilter {
         $is_product_type     = $post_type === 'product' || in_array('product', (array) $post_type, true);
 
         if (!$is_wc_product_query && !$is_product_type) {
+            return $where;
+        }
+
+        if ($query->is_singular()) {
             return $where;
         }
 

@@ -243,6 +243,30 @@
                         </th>
                         <td>
                             <input name="sm_modalidad" type="text" id="sm_modalidad" value="<?php echo esc_attr($modalidad); ?>" class="regular-text">
+                            <p class="description">Canal de venta (ej: WEB, ADMIN)</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
+                            Tipo de Documento
+                        </th>
+                        <td>
+                            <select name="sm_tido" id="sm_tido" class="regular-text">
+                                <option value="NVV" <?php selected($tido, 'NVV'); ?>>NVV - Nota de venta</option>
+                                <option value="FCV" <?php selected($tido, 'FCV'); ?>>FCV - Factura de venta</option>
+                                <option value="BLV" <?php selected($tido, 'BLV'); ?>>BLV - Boleta de venta</option>
+                                <option value="FDV" <?php selected($tido, 'FDV'); ?>>FDV - Nota de débito venta</option>
+                            </select>
+                            <p class="description">Tipo de documento a crear en el ERP cuando se complete una orden</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
+                            Funcionario
+                        </th>
+                        <td>
+                            <input name="sm_funcionario" type="text" id="sm_funcionario" value="<?php echo esc_attr($funcionario); ?>" class="regular-text" placeholder="ej: A02">
+                            <p class="description">Código del funcionario responsable de la venta (opcional)</p>
                         </td>
                     </tr>
                     <tr>
@@ -271,6 +295,18 @@
                                 Facturar al completar una orden
                             </label>
                             <p class="description">Cuando esta opción esté activada, se creará automáticamente una factura en Random ERP cuando una orden pase al estado "Completada"</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
+                            Modo de Prueba (dryRun)
+                        </th>
+                        <td>
+                            <label>
+                                <input name="sm_dry_run" type="checkbox" id="sm_dry_run" value="1" <?php checked($dry_run, true); ?> />
+                                Activar modo simulación (dryRun)
+                            </label>
+                            <p class="description">Cuando está activo, los documentos se envían al ERP con <code>?dryRun=true</code>, lo que realiza una simulación sin afectar datos reales. Útil para pruebas de integración.</p>
                         </td>
                     </tr>
                     <tr>
@@ -360,7 +396,7 @@
                                 <input name="sm_hide_zero_price" type="checkbox" id="sm_hide_zero_price" value="1" <?php checked($hide_zero_price, true); ?> />
                                 Ocultar productos con precio $0 o sin precio
                             </label>
-                            <p class="description">Cuando esta activo, los productos con precio $0 o que no tengan precio definido no se mostrarán en la tienda y devolverán un error 404 al intentar acceder directamente.</p>
+                            <p class="description">Cuando esta activo, los productos con precio $0 o que no tengan precio definido se filtran de: búsquedas, listados de categorías, productos relacionados y buscador Jet. Los clientes no podrán encontrarlos ni comprarlos.</p>
                         </td>
                     </tr>
                     <tr>

@@ -27,14 +27,12 @@ class DocumentService extends BaseApiService {
         $timestamp = date('Y-m-d H:i:s');
         $log_entry = "[$timestamp] DocumentService: $message" . PHP_EOL;
         file_put_contents($this->log_file, $log_entry, FILE_APPEND | LOCK_EX);
-        
-        // Agregar también como nota privada de orden si tenemos una orden activa
-        if ($this->current_order_id) {
-            $order = wc_get_order($this->current_order_id);
-            if ($order) {
-                $order->add_order_note("[$timestamp] DocumentService: $message", 0, true);
-            }
-        }
+    }
+
+    protected function logDebug($message) {
+        $timestamp = date('Y-m-d H:i:s');
+        $log_entry = "[$timestamp] DocumentService: $message" . PHP_EOL;
+        file_put_contents($this->log_file, $log_entry, FILE_APPEND | LOCK_EX);
     }
     
     public function check_invoice_on_completion_setting() {
@@ -69,27 +67,45 @@ class DocumentService extends BaseApiService {
                 $this->log("No valid lines found for order: $order_id");
                 return false;
             }
-            
+
+            $tido = get_option('sm_tido', 'BLV');
+            $modalidad = get_option('sm_modalidad', 'WEB');
+            $funcionario = get_option('sm_funcionario', '');
+
             $document_data = [
                 'datos' => [
                     'empresa' => $company_code,
                     'codigoEntidad' => $entity_code,
-                    'tido' => 'BLV',
-                    'modalidad' => 'WEB',
+                    'tido' => $tido,
+                    'modalidad' => $modalidad,
                     'lineas' => $lines
                 ]
             ];
+
+            if (!empty($funcionario)) {
+                $document_data['datos']['funcionario'] = $funcionario;
+            }
             
             $result = $this->create_document($document_data);
-            
+
             if ($result) {
-                $order->add_order_note('Factura creada en Random ERP exitosamente');
-                $this->log("Invoice created successfully for order: $order_id");
+                $idmaeedo = isset($result['idmaeedo']) ? $result['idmaeedo'] : '';
+                $note_message = 'Documento creado en Random ERP exitosamente';
+                if ($idmaeedo) {
+                    $note_message .= ' - idmaeedo: ' . $idmaeedo;
+                }
+                $order->add_order_note($note_message);
+
+                update_post_meta($order_id, 'created_document', 1);
+                if ($idmaeedo) {
+                    update_post_meta($order_id, 'idmaeedo', $idmaeedo);
+                }
+
+                $this->log("Document created successfully for order: $order_id - idmaeedo: $idmaeedo");
             } else {
-                $order->add_order_note('Error al crear factura en Random ERP');
-                $this->log("Failed to create invoice for order: $order_id");
-                $this->log("Request body sent to API: " . json_encode($document_data));
-                $this->log("API Response: " . json_encode($result));
+                $order->add_order_note('Error al crear documento en Random ERP');
+                update_post_meta($order_id, 'created_document', 0);
+                $this->log("Failed to create document for order: $order_id");
             }
             
             return $result;
@@ -147,19 +163,19 @@ class DocumentService extends BaseApiService {
     
     public function create_document($document_data) {
         try {
-            $this->log("Sending document to Random ERP API");
-            $this->log("Request payload: " . json_encode($document_data));
-            
+            $this->logDebug("Sending document to Random ERP API");
+            $this->logDebug("Request payload: " . json_encode($document_data));
+
             $result = $this->makeApiRequestWithDetails('/web32/documento', 'POST', $document_data);
-            
+
             if ($result !== false) {
-                $this->log("Document API response received: " . json_encode($result));
+                $this->logDebug("Document API response received");
                 return $result;
             }
-            
+
             $this->log("Document API returned false - request failed");
             return false;
-            
+
         } catch (Exception $e) {
             $this->log("API Error: " . $e->getMessage());
             return false;
@@ -172,10 +188,14 @@ class DocumentService extends BaseApiService {
             $this->log("No auth token available");
             return false;
         }
-        
+
+        if (get_option('sm_dry_run', false)) {
+            $endpoint .= (strpos($endpoint, '?') !== false ? '&' : '?') . 'dryRun=true';
+        }
+
         $url = $this->api_url . $endpoint;
-        $this->log("Making request to: " . $url);
-        
+        $this->logDebug("Making request to: " . $url);
+
         $args = [
             'method' => $method,
             'timeout' => 30,
@@ -183,47 +203,43 @@ class DocumentService extends BaseApiService {
                 'Authorization' => 'Bearer ' . $token
             ]
         ];
-        
+
         if ($data && $method !== 'GET') {
             $args['body'] = json_encode($data);
             $args['headers']['Content-Type'] = 'application/json';
         }
-        
-        $this->log("Request headers: " . json_encode($args['headers']));
-        $this->log("Request body: " . ($args['body'] ?? 'empty'));
+
+        $this->logDebug("Request headers: " . json_encode($args['headers']));
+        $this->logDebug("Request body: " . ($args['body'] ?? 'empty'));
         
         $response = wp_remote_request($url, $args);
-        
+
         if (is_wp_error($response)) {
             $this->log("WP Error: " . $response->get_error_message());
             return false;
         }
-        
+
         $status_code = wp_remote_retrieve_response_code($response);
         $body_raw = wp_remote_retrieve_body($response);
         $response_headers = wp_remote_retrieve_headers($response);
-        
-        $this->log("Response status code: " . $status_code);
-        $this->log("Response headers: " . json_encode(is_object($response_headers) ? $response_headers->getAll() : $response_headers));
-        $this->log("Response body: " . $body_raw);
+
+        $this->logDebug("Response status code: " . $status_code);
+        $this->logDebug("Response headers: " . json_encode(is_object($response_headers) ? $response_headers->getAll() : $response_headers));
+        $this->logDebug("Response body: " . $body_raw);
         
         // Códigos de estado exitosos para creación de documentos (200, 201)
         if ($status_code === 200 || $status_code === 201) {
             $body = json_decode($body_raw, true);
-            
-            if (isset($body['data']) && is_array($body['data'])) {
-                return $body['data'];
-            }
-            
+
             if (is_array($body)) {
                 return $body;
             }
-            
+
             // Para creación de documentos, a veces obtenemos el cuerpo de respuesta crudo
             if (!empty($body_raw)) {
                 return json_decode($body_raw, true) ?: $body_raw;
             }
-            
+
             $this->log("Success status " . $status_code . " but could not parse response body");
             return false;
         }
@@ -245,11 +261,7 @@ class DocumentService extends BaseApiService {
                     
                     if ($retry_status === 200) {
                         $retry_body = json_decode($retry_body_raw, true);
-                        
-                        if (isset($retry_body['data']) && is_array($retry_body['data'])) {
-                            return $retry_body['data'];
-                        }
-                        
+
                         if (is_array($retry_body)) {
                             return $retry_body;
                         }
@@ -261,19 +273,17 @@ class DocumentService extends BaseApiService {
                 $this->log("Failed to obtain new token");
             }
         }
-        
-        // Manejar respuestas de error con mensajes JSON detallados
+
         $this->log("Request failed with status " . $status_code);
-        
-        // Intentar parsear respuesta de error como JSON para información detallada de error
+
         $error_body = json_decode($body_raw, true);
         if ($error_body && isset($error_body['message'])) {
-            $this->log("API Error Message: " . $error_body['message']);
+            $this->log("API Error: " . $error_body['message']);
             if (isset($error_body['errorId'])) {
-                $this->log("API Error ID: " . $error_body['errorId']);
+                $this->logDebug("API Error ID: " . $error_body['errorId']);
             }
             if (isset($error_body['logUrl'])) {
-                $this->log("API Log URL: " . $error_body['logUrl']);
+                $this->logDebug("API Log URL: " . $error_body['logUrl']);
             }
         } else {
             $this->log("Raw error response: " . $body_raw);

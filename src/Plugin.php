@@ -17,6 +17,9 @@ use Socomarca\RandomERP\Admin\AdminPages;
 use Socomarca\RandomERP\Admin\CategoryTaxonomyAdmin;
 use Socomarca\RandomERP\Admin\LocationMappingAdmin;
 use Socomarca\RandomERP\Admin\ProductFilterAdmin;
+use Socomarca\RandomERP\Admin\UserEntityCodeField;
+use Socomarca\RandomERP\Admin\OrderActionsAdmin;
+use Socomarca\RandomERP\Admin\OrderDocumentMetaBox;
 use Socomarca\RandomERP\Ajax\LocationMappingAjaxHandler;
 use Socomarca\RandomERP\Filters\CheckoutShippingFilter;
 use Socomarca\RandomERP\Filters\LocationProductFilter;
@@ -46,13 +49,8 @@ class Plugin {
     }
     
     private function init() {
-        
-        
         $this->initializeComponents();
-        
-        
         $this->registerHooks();
-        
     }
     
     private function initializeComponents() {
@@ -80,6 +78,9 @@ class Plugin {
         new LocationMappingAdmin();
         new LocationMappingAjaxHandler();
         new ProductFilterAdmin();
+        new UserEntityCodeField();
+        new OrderActionsAdmin();
+        new OrderDocumentMetaBox();
 
         new DocumentService();
 

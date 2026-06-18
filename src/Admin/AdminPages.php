@@ -12,9 +12,9 @@ class AdminPages {
         add_action('admin_menu', [$this, 'addMenuPages']);
         add_action('admin_enqueue_scripts', [$this, 'enqueueAssets']);
     }
-    
+
     public function addMenuPages() {
-        
+
         $page = add_menu_page(
             'Socomarca',
             'Socomarca',
@@ -24,7 +24,15 @@ class AdminPages {
             'dashicons-admin-settings',
             30
         );
-        
+
+        add_submenu_page(
+            'socomarca',
+            'Logs',
+            'Logs',
+            'manage_options',
+            'socomarca-logs',
+            [$this, 'renderLogsPage']
+        );
     }
     
     public function enqueueAssets($hook) {
@@ -106,6 +114,9 @@ class AdminPages {
         $asset_version = sanitize_text_field($_POST['sm_asset_version'] ?? SOCOMARCA_ERP_VERSION);
         $default_region = sanitize_text_field($_POST['sm_default_region'] ?? '');
         $default_comuna = sanitize_text_field($_POST['sm_default_comuna'] ?? '');
+        $tido = sanitize_text_field($_POST['sm_tido'] ?? 'BLV');
+        $funcionario = sanitize_text_field($_POST['sm_funcionario'] ?? '');
+        $dry_run = isset($_POST['sm_dry_run']) ? 1 : 0;
         
         
         update_option('sm_operation_mode', $operation_mode);
@@ -129,6 +140,9 @@ class AdminPages {
         update_option('sm_asset_version', $asset_version);
         update_option('sm_default_region', $default_region);
         update_option('sm_default_comuna', $default_comuna);
+        update_option('sm_tido', $tido);
+        update_option('sm_funcionario', $funcionario);
+        update_option('sm_dry_run', $dry_run);
         
         // Reconfigurar el cron job
         $cronService = new \Socomarca\RandomERP\Services\CronSyncService();
@@ -145,9 +159,37 @@ class AdminPages {
         });
     }
     
+    public function renderLogsPage() {
+        $log_file = SOCOMARCA_ERP_PLUGIN_DIR . 'logs/documents.log';
+
+        ?>
+        <div class="wrap">
+            <h1>Logs - Documentos ERP</h1>
+
+            <div style="background: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <?php if (file_exists($log_file)) : ?>
+                    <div style="background: #f5f5f5; padding: 15px; border-radius: 3px; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.6; overflow-x: auto; max-height: 600px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word;">
+                        <?php
+                        $content = file_get_contents($log_file);
+                        $lines = array_filter(explode("\n", $content));
+                        $lines = array_reverse($lines);
+                        echo esc_html(implode("\n", $lines));
+                        ?>
+                    </div>
+                    <p style="margin-top: 15px; font-size: 12px; color: #666;">
+                        Total de líneas: <?php echo count($lines); ?>
+                    </p>
+                <?php else : ?>
+                    <p style="color: #d32f2f;">No hay logs disponibles</p>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php
+    }
+
     private function getConfiguration() {
         $cronService = new \Socomarca\RandomERP\Services\CronSyncService();
-        
+
         return [
             'operation_mode' => get_option('sm_operation_mode', 'development'),
             'dev_api_url' => get_option('sm_dev_api_url', 'http://seguimiento.random.cl:3003'),
@@ -170,6 +212,9 @@ class AdminPages {
             'asset_version' => get_option('sm_asset_version', SOCOMARCA_ERP_VERSION),
             'default_region' => get_option('sm_default_region', 'CL-RM'),
             'default_comuna' => get_option('sm_default_comuna', 'Santiago'),
+            'tido' => get_option('sm_tido', 'BLV'),
+            'funcionario' => get_option('sm_funcionario', ''),
+            'dry_run' => get_option('sm_dry_run', false),
             'last_sync' => $cronService->getLastSyncInfo()
         ];
     }
