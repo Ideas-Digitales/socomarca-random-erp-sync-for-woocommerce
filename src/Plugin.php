@@ -28,6 +28,7 @@ use Socomarca\RandomERP\Shortcodes\LocationStockShortcode;
 use Socomarca\RandomERP\Compat\MultilocationBlockFix;
 use Socomarca\RandomERP\Frontend\ProductPageCustomizer;
 use Socomarca\RandomERP\Frontend\ProductStockValidator;
+use Socomarca\RandomERP\Frontend\ZeroPriceValidator;
 
 class Plugin {
     
@@ -90,7 +91,8 @@ class Plugin {
         new MultilocationBlockFix();
         new ProductPageCustomizer();
         new ProductStockValidator();
-        
+        new ZeroPriceValidator();
+
     }
     
     private function registerHooks() {

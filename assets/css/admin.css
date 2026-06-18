@@ -81,6 +81,7 @@
 }
 
 
-.b2bking_dismiss_review_notice {
+/* Ocultar columna de marcas en listado de productos */
+.column-taxonomy-product_brand {
     display: none !important;
 }

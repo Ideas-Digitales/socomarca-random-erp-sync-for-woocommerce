@@ -68,12 +68,16 @@ class ProductStockValidator {
         (function ($) {
             $(document).ready(function () {
                 console.log('[SM-VALIDATOR] Iniciando validador de stock');
-                
+
                 var hasStock = <?php echo $has_stock; ?>;
                 var locationId = <?php echo $location_id; ?>;
 
                 if (locationId && hasStock === false) {
                     console.log('[SM-VALIDATOR] Producto sin stock en ubicación seleccionada, deshabilitando carrito');
+
+                    // Ocultar el precio y el mensaje de stock disponible
+                    $('p.stock').hide();
+                    $('.price').hide();
 
                     // Cambiar botón de compra
                     var $form = $('form.cart');
@@ -116,6 +120,17 @@ class ProductStockValidator {
     private function getProductStockInfo($product_id, $location_id) {
         if (!$location_id) {
             error_log('[SM-VALIDATOR-STOCK] No location_id provided');
+            return ['has_stock' => false, 'stock_qty' => 0];
+        }
+
+        $product = wc_get_product($product_id);
+        if (!$product) {
+            return ['has_stock' => false, 'stock_qty' => 0];
+        }
+
+        $price = $product->get_price();
+        if ($price === '' || $price === null || (float) $price <= 0) {
+            error_log('[SM-VALIDATOR-STOCK] Product ' . $product_id . ' has zero/invalid price, treating as out of stock');
             return ['has_stock' => false, 'stock_qty' => 0];
         }
 

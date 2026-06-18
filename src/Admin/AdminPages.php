@@ -29,10 +29,6 @@ class AdminPages {
     
     public function enqueueAssets($hook) {
         
-        if ($hook !== 'toplevel_page_socomarca') {
-            return;
-        }
-        
         $plugin_url = SOCOMARCA_ERP_PLUGIN_URL;
         
         $admin_css_version = file_exists(SOCOMARCA_ERP_PLUGIN_DIR . 'assets/css/admin.css')
