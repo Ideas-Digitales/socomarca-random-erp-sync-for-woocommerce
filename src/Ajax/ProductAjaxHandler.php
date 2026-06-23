@@ -18,6 +18,7 @@ class ProductAjaxHandler extends BaseAjaxHandler {
         add_action('wp_ajax_sm_process_products', [$this, 'processProducts']);
         add_action('wp_ajax_sm_process_batch_products', [$this, 'processBatchProducts']);
         add_action('wp_ajax_sm_delete_all_products', [$this, 'deleteAllProducts']);
+        add_action('wp_ajax_sm_convert_variables_to_simple', [$this, 'convertVariablesToSimple']);
     }
     
     public function getProducts() {
@@ -76,13 +77,29 @@ class ProductAjaxHandler extends BaseAjaxHandler {
     public function deleteAllProducts() {
         $this->requireAdminPermissions();
         $this->requireConfirmation('DELETE_ALL_PRODUCTS');
-        
+
         $this->logAction('Iniciando eliminación masiva de productos');
-        
+
         $result = $this->productService->deleteAllProducts();
-        
+
         $this->logAction('Resultado eliminación - ' . print_r($result, true));
-        
+
+        $this->sendJsonResponse($result['success'], $result);
+        wp_die();
+    }
+
+    public function convertVariablesToSimple() {
+        $this->requireAdminPermissions();
+
+        $offset = intval(isset($_POST['offset']) ? $_POST['offset'] : 0);
+        $batch_size = intval(isset($_POST['batch_size']) ? $_POST['batch_size'] : 10);
+
+        $this->logAction("Convirtiendo productos variables a simples - offset=$offset, batch_size=$batch_size");
+
+        $result = $this->productService->convertVariablesToSimpleBatch($offset, $batch_size);
+
+        $this->logAction('Resultado conversión - ' . print_r($result, true));
+
         $this->sendJsonResponse($result['success'], $result);
         wp_die();
     }

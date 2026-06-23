@@ -219,7 +219,9 @@
                     comuna_name:  comunaName,
                     warehouse_id: newWarehouseId,
                 });
+                sessionStorage.setItem('sm_selected_location', cookieData);
                 document.cookie = 'sm_selected_location=' + encodeURIComponent(cookieData) + '; path=/; max-age=2592000';
+                console.log('[SM-LOCATION] saveCookie (sessionStorage + cookie):', cookieData);
             };
 
             var showReloadOverlay = function () {
@@ -278,23 +280,29 @@
                     location_name: comunaName
                 });
 
-                if (warehouseId) {
-                    $.ajax({
-                        url:  sm_location_popup.ajax_url,
-                        type: 'POST',
-                        data: {
-                            action:        'select_location',
-                            location_id:   warehouseId,
-                            location_name: comunaName,
-                            nonce:         sm_location_popup.multiloca_nonce,
-                        },
-                        complete: function () {
-                            window.location.href = targetUrl;
-                        },
-                    });
-                } else {
-                    window.location.href = targetUrl;
-                }
+                var performNavigation = function() {
+                    if (warehouseId) {
+                        $.ajax({
+                            url:  sm_location_popup.ajax_url,
+                            type: 'POST',
+                            data: {
+                                action:        'select_location',
+                                location_id:   warehouseId,
+                                location_name: comunaName,
+                                nonce:         sm_location_popup.multiloca_nonce,
+                            },
+                            complete: function () {
+                                window.location.href = targetUrl;
+                            },
+                        });
+                    } else {
+                        window.location.href = targetUrl;
+                    }
+                };
+
+                // Esperar 500ms para asegurar que la cookie se haya guardado en el navegador
+                // antes de recargar la página
+                setTimeout(performNavigation, 500);
             };
 
             var executeSwitchAndReload = function () {
@@ -472,6 +480,21 @@
         },
 
         parseCookie: function () {
+            var data = null;
+
+            // Intentar leer de sessionStorage primero (más rápido y confiable)
+            var sessionData = sessionStorage.getItem('sm_selected_location');
+            if (sessionData) {
+                try {
+                    data = JSON.parse(sessionData);
+                    console.log('[SM-LOCATION] parseCookie - Found in sessionStorage:', data);
+                    return data;
+                } catch (e) {
+                    console.log('[SM-LOCATION] parseCookie - sessionStorage parse error:', e);
+                }
+            }
+
+            // Fallback a cookies
             var raw = document.cookie.split('; ').reduce(function (acc, part) {
                 var idx = part.indexOf('=');
                 var key = part.substring(0, idx);
@@ -480,13 +503,41 @@
                 }
                 return acc;
             }, null);
-            if (!raw) return null;
-            try { return JSON.parse(decodeURIComponent(raw)); } catch (e) { return null; }
+
+            if (!raw) {
+                console.log('[SM-LOCATION] parseCookie - No data found (sessionStorage or cookies)');
+                return null;
+            }
+
+            try {
+                data = JSON.parse(decodeURIComponent(raw));
+                console.log('[SM-LOCATION] parseCookie - Found in cookies:', data);
+                return data;
+            } catch (e) {
+                console.log('[SM-LOCATION] parseCookie - Parse error:', e);
+                return null;
+            }
         },
     };
 
     $(document).ready(function () {
         SmLocationPopup.init();
+
+        // Actualizar el texto del shortcode cuando cambia la ubicación (sin recargar)
+        $(document).on('sm_location_changed', function (e, data) {
+            var selectedData = sessionStorage.getItem('sm_selected_location');
+            if (selectedData) {
+                try {
+                    var locationData = JSON.parse(selectedData);
+                    var displayText = locationData.region_name.trim() + ' - ' + locationData.comuna_name;
+                    var $trigger = $('.sm-location-popup-trigger');
+                    $trigger.html(displayText + ' <span class="sm-trigger-change">(cambiar)</span>');
+                    console.log('[SM-LOCATION] Updated trigger text:', displayText);
+                } catch (e) {
+                    console.log('[SM-LOCATION] Error updating trigger text:', e);
+                }
+            }
+        });
     });
 
 })(jQuery);

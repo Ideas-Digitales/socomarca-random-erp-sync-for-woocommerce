@@ -849,6 +849,74 @@ jQuery(document).ready(function($) {
         });
     }
     
+    // Manejar botón de convertir variables a simples
+    $('#sm_convert_variables_to_simple').click(function(e) {
+        e.preventDefault();
+
+        var confirmation = confirm('¿Estás seguro de que quieres convertir todos los productos variables a simples?\n\nEsta acción eliminará todas las variaciones de los productos.');
+
+        if (!confirmation) {
+            return;
+        }
+
+        var $button = $(this);
+        var $result = $('#sm_convert_variables_result');
+        var $progress = $button.closest('td').find('.sm_convert_progress');
+
+        $button.addClass('disabled').text('Iniciando conversión...');
+        $result.html('');
+        $progress.show();
+
+        processBatchConversion($button, $result, $progress, 0, 100);
+    });
+
+    function processBatchConversion($button, $result, $progress, offset, batchSize) {
+        $.ajax({
+            url: socomarca_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'sm_convert_variables_to_simple',
+                offset: offset,
+                batch_size: batchSize,
+                nonce: socomarca_ajax.nonce
+            },
+            success: function(response) {
+                console.log('Respuesta conversión:', response);
+
+                if (response.success) {
+                    var totalConverted = offset + response.data.converted;
+                    var total = response.data.total;
+                    var percentage = (response.data.processed / total) * 100;
+
+                    $progress.find('.sm_sync_progress_bar_text').html(response.data.processed + '/' + total);
+                    $progress.find('.sm_sync_progress_bar_fill').css('width', percentage + '%');
+                    $progress.find('.sm_convert_status_report').html('[' + totalConverted + ' convertidos]');
+
+                    if (!response.data.is_complete) {
+                        setTimeout(function() {
+                            processBatchConversion($button, $result, $progress, response.data.processed, batchSize);
+                        }, 300);
+                    } else {
+                        $button.removeClass('disabled').text('Convertir variables a simples');
+                        $result.html('<span style="color: green;">✓ Conversión completada: ' + totalConverted + ' productos convertidos a simples</span>');
+                        setTimeout(function() {
+                            $progress.hide();
+                        }, 2000);
+                    }
+                } else {
+                    $button.removeClass('disabled').text('Convertir variables a simples');
+                    $result.html('<span style="color: red;">✗ Error: ' + response.data.message + '</span>');
+                    $progress.hide();
+                }
+            },
+            error: function(xhr, status, error) {
+                $button.removeClass('disabled').text('Convertir variables a simples');
+                $result.html('<span style="color: red;">✗ Error en la petición: ' + error + '</span>');
+                $progress.hide();
+            }
+        });
+    }
+
     // Manejar tabs de WordPress
     $('.nav-tab-wrapper .nav-tab').click(function(e) {
         e.preventDefault();

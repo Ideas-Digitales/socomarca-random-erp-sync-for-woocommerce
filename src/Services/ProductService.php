@@ -186,70 +186,60 @@ class ProductService extends BaseApiService {
         if (!$wc_product) {
             return ['success' => false, 'error' => "Error obteniendo producto existente: {$product['KOPR']}"];
         }
-        
-        // Actualizar información básica del producto
+
+        if ($wc_product->is_type('variable')) {
+            $this->convertVariableToSimple($product_id);
+            $wc_product = \wc_get_product($product_id);
+        }
+
         $wc_product->set_name($product['NOKOPR']);
         $wc_product->set_sku($product['KOPR']);
         $wc_product->set_status('publish');
         $wc_product->set_catalog_visibility('visible');
-        
+        $wc_product->set_manage_stock(true);
+        $wc_product->set_stock_quantity(0);
+        $wc_product->set_regular_price(0);
+
         if (!empty($category_ids)) {
             $wc_product->set_category_ids($category_ids);
         }
-        
-        // Manejar diferentes tipos de productos
-        if ($wc_product->is_type('simple')) {
-            // Convertir producto simple a producto variable
-            
-            // Eliminar el producto simple y crear un nuevo producto variable
-            \wp_delete_post($product_id, true);
-            
-            // Crear nuevo producto variable
-            $variations_data = $this->createDefaultVariations($product);
-            return $this->createVariableProduct($product, $category_ids, $variations_data);
-            
-        } elseif ($wc_product->is_type('variable')) {
-            // Para productos variables, actualizar variaciones si es necesario
-            $this->updateProductVariations($product_id, null);
-        }
-        
+
         $wc_product->save();
-        
-        // Guardar meta del producto
+
         $this->saveProductMeta($product_id, $product);
-        
+
         return ['success' => true, 'action' => 'updated'];
     }
-    
-    private function updateProductVariations($parent_id, $variations_data) {
-        // Obtener variaciones existentes
-        $existing_variations = \wc_get_products([
+
+    private function convertVariableToSimple($product_id) {
+        $variations = \wc_get_products([
             'type' => 'variation',
-            'parent' => $parent_id,
+            'parent' => $product_id,
             'limit' => -1,
             'return' => 'ids'
         ]);
-        
-        // Eliminar todas las variaciones existentes y recrear con "UN"
-        foreach ($existing_variations as $variation_id) {
+
+        foreach ($variations as $variation_id) {
             \wp_delete_post($variation_id, true);
         }
-        
-        // Obtener producto padre para actualizar atributos
-        $parent_product = \wc_get_product($parent_id);
-        if ($parent_product) {
-            // Crear nuevas variaciones por defecto
-            $new_variations_data = $this->createDefaultVariations(['KOPR' => $parent_product->get_sku()]);
-            
-            // Actualizar atributos del producto padre
-            $attributes = $this->createProductAttributes($new_variations_data);
-            $parent_product->set_attributes($attributes);
-            $parent_product->save();
-            
-            // Crear nuevas variaciones
-            $created_count = $this->createProductVariations($parent_id, $new_variations_data);
+
+        \delete_post_meta($product_id, 'attribute_pa_unidad');
+        \delete_post_meta($product_id, 'attribute_pa_talla');
+        \delete_post_meta($product_id, 'attribute_pa_color');
+        \delete_post_meta($product_id, '_product_attributes');
+
+        \update_post_meta($product_id, '_type', 'simple');
+
+        $product = \wc_get_product($product_id);
+        if ($product) {
+            $product->save();
         }
+
+        \delete_transient('wc_product_type_' . $product_id);
+        \wp_cache_delete($product_id, 'post');
+        \wp_cache_delete('product_id_' . $product_id, 'posts');
     }
+    
     
     private function createNewProduct($product, $category_ids) {
         return $this->createSimpleProduct($product, $category_ids);
@@ -280,251 +270,11 @@ class ProductService extends BaseApiService {
         return ['success' => true, 'action' => 'created'];
     }
     
-    private function createVariableProduct($product, $category_ids, $variations_data) {
-        
-        // Crear el producto variable padre
-        $variable_product = new \WC_Product_Variable();
-        $variable_product->set_name($product['NOKOPR']);
-        $variable_product->set_sku($product['KOPR']);
-        $variable_product->set_status('publish');
-        $variable_product->set_catalog_visibility('visible');
-        $variable_product->set_manage_stock(false);
-        
-        if (!empty($category_ids)) {
-            $variable_product->set_category_ids($category_ids);
-        }
-        
-        // Crear atributos de producto para variaciones
-        $attributes = $this->createProductAttributes($variations_data);
-        if (!empty($attributes)) {
-            $variable_product->set_attributes($attributes);
-        }
-        
-        // Guardar el producto padre
-        $parent_id = $variable_product->save();
-        
-        if (!$parent_id) {
-            return ['success' => false, 'error' => "Error creando producto variable: {$product['KOPR']}"];
-        }
-        
-        // Guardar meta del producto padre
-        $this->saveProductMeta($parent_id, $product);
-        
-        // Crear variaciones individuales
-        $variations_created = $this->createProductVariations($parent_id, $variations_data);
-        
-        return ['success' => true, 'action' => 'created'];
-    }
     
-    private function createDefaultVariations($product) {
-        // Crear estructura de variación por defecto con "Unidad" = "UN" como única variación
-        $variations_data = [
-            'units' => ['UN'],
-            'combinations' => []
-        ];
-        
-        // Generar combinación única para "UN"
-        $this->generateVariationCombinations($variations_data, $product);
-        
-        
-        return $variations_data;
-    }
     
-    private function extractVariationsFromErpData($product) {
-        // Por ahora, crearemos una estructura de variación por defecto
-        // Esto puede modificarse basado en la estructura real de datos del ERP
-        
-        // Ejemplo: Si el producto tiene tallas o colores en los datos del ERP
-        $variations_data = null;
-        
-        // Verificar si el producto tiene indicadores de variación en su nombre o código
-        if (isset($product['NOKOPR'])) {
-            $name = strtoupper($product['NOKOPR']);
-            
-            // Buscar indicadores de talla en el nombre del producto
-            $sizes = [];
-            if (preg_match('/\b(XS|S|M|L|XL|XXL|XXXL)\b/', $name, $matches)) {
-                $sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
-            }
-            
-            // Buscar indicadores de color o crear colores por defecto
-            $colors = [];
-            if (strpos($name, 'NEGRO') !== false || strpos($name, 'BLACK') !== false) {
-                $colors[] = 'Negro';
-            }
-            if (strpos($name, 'BLANCO') !== false || strpos($name, 'WHITE') !== false) {
-                $colors[] = 'Blanco';
-            }
-            if (strpos($name, 'AZUL') !== false || strpos($name, 'BLUE') !== false) {
-                $colors[] = 'Azul';
-            }
-            
-            // Si no se encuentran colores específicos, agregar los por defecto para productos tipo ropa
-            if (empty($colors) && !empty($sizes)) {
-                $colors = ['Negro', 'Blanco', 'Azul'];
-            }
-            
-            // Crear variaciones si tenemos atributos
-            if (!empty($sizes) || !empty($colors)) {
-                $variations_data = [
-                    'sizes' => $sizes,
-                    'colors' => $colors,
-                    'combinations' => []
-                ];
-                
-                // Generar combinaciones
-                $this->generateVariationCombinations($variations_data, $product);
-            }
-        }
-        
-        return $variations_data;
-    }
     
-    private function generateVariationCombinations(&$variations_data, $product) {
-        $base_sku = $product['KOPR'];
-        $base_price = 0; // Precio por defecto
-        $counter = 1;
-        
-        // Manejar diferentes tipos de variaciones
-        if (!empty($variations_data['units'])) {
-            // Para variaciones de "Unidad" (por defecto)
-            foreach ($variations_data['units'] as $unit) {
-                $variation_sku = $base_sku . '|' . str_pad($counter, 2, '0', STR_PAD_LEFT);
-                
-                $combination = [
-                    'sku' => $variation_sku,
-                    'price' => $base_price,
-                    'stock_status' => 'instock',
-                    'erp_id' => $base_sku . '_' . $counter,
-                    'unit' => $unit
-                ];
-                
-                $variations_data['combinations'][] = $combination;
-                $counter++;
-            }
-        } else {
-            // Manejar combinaciones de talla/color (para variaciones auto-detectadas)
-            $sizes = !empty($variations_data['sizes']) ? $variations_data['sizes'] : ['Único'];
-            $colors = !empty($variations_data['colors']) ? $variations_data['colors'] : ['Único'];
-            
-            foreach ($sizes as $size) {
-                foreach ($colors as $color) {
-                    // Omitir si ambos son "Único" (crearía variación redundante)
-                    if ($size === 'Único' && $color === 'Único') {
-                        continue;
-                    }
-                    
-                    $variation_sku = $base_sku . '-' . str_pad($counter, 2, '0', STR_PAD_LEFT);
-                    
-                    $combination = [
-                        'sku' => $variation_sku,
-                        'price' => $base_price,
-                        'stock_status' => 'instock',
-                        'erp_id' => $base_sku . '_' . $counter
-                    ];
-                    
-                    if ($size !== 'Único') {
-                        $combination['size'] = $size;
-                    }
-                    if ($color !== 'Único') {
-                        $combination['color'] = $color;
-                    }
-                    
-                    $variations_data['combinations'][] = $combination;
-                    $counter++;
-                }
-            }
-        }
-    }
     
-    private function createProductAttributes($variations_data) {
-        $attributes = [];
-        
-        // Crear atributo de Unidad si existen unidades (para variaciones de "Unidad")
-        if (!empty($variations_data['units'])) {
-            $unit_attribute = new \WC_Product_Attribute();
-            $unit_attribute->set_id(0); // Atributo personalizado
-            $unit_attribute->set_name('Unidad');
-            $unit_attribute->set_options($variations_data['units']);
-            $unit_attribute->set_position(0);
-            $unit_attribute->set_visible(true);
-            $unit_attribute->set_variation(true);
-            $attributes['pa_unidad'] = $unit_attribute;
-        }
-        
-        // Crear atributo de Talla si existen tallas
-        if (!empty($variations_data['sizes'])) {
-            $size_attribute = new \WC_Product_Attribute();
-            $size_attribute->set_id(0); // Atributo personalizado
-            $size_attribute->set_name('Talla');
-            $size_attribute->set_options($variations_data['sizes']);
-            $size_attribute->set_position(0);
-            $size_attribute->set_visible(true);
-            $size_attribute->set_variation(true);
-            $attributes['pa_talla'] = $size_attribute;
-        }
-        
-        // Crear atributo de Color si existen colores
-        if (!empty($variations_data['colors'])) {
-            $color_attribute = new \WC_Product_Attribute();
-            $color_attribute->set_id(0); // Atributo personalizado
-            $color_attribute->set_name('Color');
-            $color_attribute->set_options($variations_data['colors']);
-            $color_attribute->set_position(1);
-            $color_attribute->set_visible(true);
-            $color_attribute->set_variation(true);
-            $attributes['pa_color'] = $color_attribute;
-        }
-        
-        return $attributes;
-    }
     
-    private function createProductVariations($parent_id, $variations_data) {
-        $created_count = 0;
-        
-        foreach ($variations_data['combinations'] as $combination) {
-            try {
-                $variation = new \WC_Product_Variation();
-                $variation->set_parent_id($parent_id);
-                
-                // Establecer atributos de variación
-                $attributes = [];
-                if (isset($combination['unit'])) {
-                    $attributes['attribute_pa_unidad'] = \sanitize_title($combination['unit']);
-                }
-                if (isset($combination['size'])) {
-                    $attributes['attribute_pa_talla'] = \sanitize_title($combination['size']);
-                }
-                if (isset($combination['color'])) {
-                    $attributes['attribute_pa_color'] = \sanitize_title($combination['color']);
-                }
-                
-                $variation->set_attributes($attributes);
-                
-                // Establecer propiedades de variación
-                $variation->set_sku($combination['sku']);
-                $variation->set_regular_price($combination['price']);
-                $variation->set_stock_status($combination['stock_status']);
-                $variation->set_manage_stock(false);
-                $variation->set_status('publish');
-                
-                // Guardar la variación
-                $variation_id = $variation->save();
-                
-                if ($variation_id) {
-                    // Guardar meta datos personalizados para la variación
-                    \update_post_meta($variation_id, '_erp_variation_id', $combination['erp_id']);
-                    $created_count++;
-                    
-                } else {
-                }
-                
-            } catch (Exception $e) {
-            }
-        }
-        
-        return $created_count;
-    }
     
     private function saveProductMeta($product_id, $product) {
         \update_post_meta($product_id, '_erp_product_id', $product['KOPR']);
@@ -532,6 +282,55 @@ class ProductService extends BaseApiService {
         \update_post_meta($product_id, '_erp_alternative_code', isset($product['KOPRAL']) ? $product['KOPRAL'] : '');
     }
     
+    public function convertVariablesToSimpleBatch($offset = 0, $batch_size = 10) {
+        $args = [
+            'post_type' => 'product',
+            'posts_per_page' => $batch_size,
+            'offset' => $offset,
+            'orderby' => 'ID',
+            'order' => 'ASC'
+        ];
+
+        $query = new \WP_Query($args);
+        $total = $query->found_posts;
+
+        if (empty($query->posts)) {
+            return [
+                'success' => true,
+                'converted' => 0,
+                'total' => $total,
+                'processed' => $offset,
+                'is_complete' => true,
+                'message' => 'Todos los productos han sido procesados'
+            ];
+        }
+
+        $cleaned = 0;
+        foreach ($query->posts as $post) {
+            try {
+                $this->convertVariableToSimple($post->ID);
+                $cleaned++;
+            } catch (Exception $e) {
+            }
+        }
+
+        $processed = $offset + count($query->posts);
+        $is_complete = $processed >= $total;
+
+        if ($is_complete) {
+            \wp_cache_flush();
+        }
+
+        return [
+            'success' => true,
+            'converted' => $cleaned,
+            'processed' => $processed,
+            'total' => $total,
+            'is_complete' => $is_complete,
+            'message' => "$cleaned productos procesados en este lote"
+        ];
+    }
+
     public function deleteAllProducts() {
         
         try {

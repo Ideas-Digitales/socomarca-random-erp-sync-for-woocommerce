@@ -32,6 +32,8 @@ use Socomarca\RandomERP\Compat\MultilocationBlockFix;
 use Socomarca\RandomERP\Frontend\ProductPageCustomizer;
 use Socomarca\RandomERP\Frontend\ProductStockValidator;
 use Socomarca\RandomERP\Frontend\ZeroPriceValidator;
+use Socomarca\RandomERP\Frontend\CheckoutBillingFields;
+use Socomarca\RandomERP\Frontend\CheckoutStorePickup;
 
 class Plugin {
     
@@ -93,6 +95,8 @@ class Plugin {
         new ProductPageCustomizer();
         new ProductStockValidator();
         new ZeroPriceValidator();
+        new CheckoutBillingFields();
+        new CheckoutStorePickup();
 
     }
     

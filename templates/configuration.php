@@ -501,6 +501,36 @@
     
     <div id="tab-admin" class="tab-content" style="display: none;">
         <h3>Herramientas de Administración</h3>
+
+        <h4>Herramientas de Conversión</h4>
+        <table class="form-table">
+            <tbody>
+                <tr>
+                    <th>
+                        Convertir Productos Variables a Simples
+                    </th>
+                    <td>
+                        <a class="button" href="#" id="sm_convert_variables_to_simple" style="background-color: #0073aa; border-color: #0073aa; color: white;">
+                            Convertir variables a simples
+                        </a>
+                        <span id="sm_convert_variables_result"></span>
+                        <span class="sm_convert_progress" style="display: none;">
+                            <div class="sm_sync_progress_bar">
+                                <span class="sm_sync_progress_bar_text">0/0</span>
+                                <div class="sm_sync_progress_bar_fill"></div>
+                            </div>
+                            <span class="sm_convert_status_report" style="margin-left: 10px; font-weight: bold; color: #0073aa;">
+                                [0 convertidos]
+                            </span>
+                        </span>
+                        <p class="description">
+                            Esta acción busca todos los productos variables y los convierte a simples, eliminando sus variaciones.
+                        </p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
         <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 15px; margin: 20px 0;">
             <p style="margin: 0; color: #856404;"><strong>⚠️ ZONA DE PELIGRO:</strong> Las siguientes operaciones eliminarán datos de forma permanente. Úsalas con extrema precaución.</p>
         </div>

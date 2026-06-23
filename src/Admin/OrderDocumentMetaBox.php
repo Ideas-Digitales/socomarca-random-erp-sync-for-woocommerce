@@ -33,8 +33,9 @@ class OrderDocumentMetaBox {
     public function render_metabox($order) {
         $created_document = get_post_meta($order->get_id(), 'created_document', true);
         $idmaeedo = get_post_meta($order->get_id(), 'idmaeedo', true);
+        $numero_documento = get_post_meta($order->get_id(), 'numero_documento', true);
 
-        if (!$created_document && !$idmaeedo) {
+        if (!$created_document && !$idmaeedo && !$numero_documento) {
             echo '<p style="color: #999;">Sin información de documento</p>';
             return;
         }
@@ -56,6 +57,12 @@ class OrderDocumentMetaBox {
                     <tr>
                         <td style="font-weight: bold;">ID Documento (idmaeedo):</td>
                         <td><strong><?php echo esc_html($idmaeedo); ?></strong></td>
+                    </tr>
+                <?php endif; ?>
+                <?php if ($numero_documento) : ?>
+                    <tr>
+                        <td style="font-weight: bold;">Número de Documento:</td>
+                        <td><strong><?php echo esc_html($numero_documento); ?></strong></td>
                     </tr>
                 <?php endif; ?>
             </tbody>

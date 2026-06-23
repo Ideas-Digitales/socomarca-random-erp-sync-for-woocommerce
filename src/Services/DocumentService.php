@@ -72,15 +72,39 @@ class DocumentService extends BaseApiService {
             $modalidad = get_option('sm_modalidad', 'WEB');
             $funcionario = get_option('sm_funcionario', '');
 
+            // Obtener datos de documento y billing de la orden
+            $documento_tipo = get_post_meta($order_id, 'sm_documento_tipo', true) ?: 'factura';
+            $rut = get_post_meta($order_id, 'sm_rut', true) ?: '';
+            $razon_social = get_post_meta($order_id, 'sm_razon_social', true) ?: '';
+            $giro = get_post_meta($order_id, 'sm_giro', true) ?: '';
+
+            // Construir observación con tipo de documento y RUT
+            $tipo_label = ($documento_tipo === 'factura') ? 'Factura' : 'Boleta';
+            $observacion = 'Orden desde '.get_bloginfo('name').' - #' . $order_id;
+            if (!empty($rut)) {
+                $observacion .= ' - (' . $tipo_label . '): ' . $rut;
+            }
+
             $document_data = [
                 'datos' => [
                     'empresa' => $company_code,
                     'codigoEntidad' => $entity_code,
                     'tido' => $tido,
                     'modalidad' => $modalidad,
-                    'lineas' => $lines
+                    'lineas' => $lines,
+                    'observacion' => $observacion
                 ]
             ];
+
+            // Agregar texto1 solo si es Factura y tiene Razón Social
+            if ($documento_tipo === 'factura' && !empty($razon_social)) {
+                $document_data['datos']['texto1'] = 'Razon Social: ' . $razon_social;
+            }
+
+            // Agregar texto2 solo si es Factura y tiene Giro
+            if ($documento_tipo === 'factura' && !empty($giro)) {
+                $document_data['datos']['texto2'] = 'Giro: ' . $giro;
+            }
 
             if (!empty($funcionario)) {
                 $document_data['datos']['funcionario'] = $funcionario;
@@ -90,9 +114,13 @@ class DocumentService extends BaseApiService {
 
             if ($result) {
                 $idmaeedo = isset($result['idmaeedo']) ? $result['idmaeedo'] : '';
+                $numero = isset($result['numero']) ? $result['numero'] : '';
                 $note_message = 'Documento creado en Random ERP exitosamente';
                 if ($idmaeedo) {
                     $note_message .= ' - idmaeedo: ' . $idmaeedo;
+                }
+                if ($numero) {
+                    $note_message .= ' - numero: ' . $numero;
                 }
                 $order->add_order_note($note_message);
 
@@ -100,8 +128,11 @@ class DocumentService extends BaseApiService {
                 if ($idmaeedo) {
                     update_post_meta($order_id, 'idmaeedo', $idmaeedo);
                 }
+                if ($numero) {
+                    update_post_meta($order_id, 'numero_documento', $numero);
+                }
 
-                $this->log("Document created successfully for order: $order_id - idmaeedo: $idmaeedo");
+                $this->log("Document created successfully for order: $order_id - idmaeedo: $idmaeedo - numero: $numero");
             } else {
                 $order->add_order_note('Error al crear documento en Random ERP');
                 update_post_meta($order_id, 'created_document', 0);

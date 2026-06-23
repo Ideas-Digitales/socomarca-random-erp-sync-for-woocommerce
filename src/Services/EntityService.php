@@ -66,8 +66,9 @@ class EntityService extends BaseApiService {
         
         foreach ($batch as $entidad) {
             try {
-                $rut = isset($entidad['KOEN']) ? $entidad['KOEN'] : null;
-                
+                $rut = isset($entidad['RTEN']) ? $entidad['RTEN'] : null;
+                $entity_code = isset($entidad['KOEN']) ? $entidad['KOEN'] : null;
+
                 if (empty($rut)) {
                     continue;
                 }
@@ -141,7 +142,7 @@ class EntityService extends BaseApiService {
                 
 
                 update_user_meta($user_id, 'rut', $rut);
-                update_user_meta($user_id, 'random_erp_entity_code', $rut);
+                update_user_meta($user_id, 'random_erp_entity_code', $entity_code);
                 update_user_meta($user_id, 'business_name', isset($entidad['SIEN']) ? $entidad['SIEN'] : '');
                 update_user_meta($user_id, 'phone', isset($entidad['FOEN']) ? $entidad['FOEN'] : '');
                 update_user_meta($user_id, 'is_active', true);
