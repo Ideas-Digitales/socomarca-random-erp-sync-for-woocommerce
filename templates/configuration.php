@@ -239,6 +239,24 @@
                     </tr>
                     <tr>
                         <th>
+                            Plantilla de entidad (koenTemplate)
+                        </th>
+                        <td>
+                            <input name="sm_koen_template" type="text" id="sm_koen_template" value="<?php echo esc_attr($koen_template); ?>" class="regular-text">
+                            <p class="description">Plantilla de entidad por defecto para la sincronización (ej: BOLETA)</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
+                            Código de sucursal (suen)
+                        </th>
+                        <td>
+                            <input name="sm_suen" type="text" id="sm_suen" value="<?php echo esc_attr($suen); ?>" class="regular-text">
+                            <p class="description">Código de la sucursal correspondiente para registrar entidades en el ERP (ej: BLB)</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
                             Modalidad
                         </th>
                         <td>

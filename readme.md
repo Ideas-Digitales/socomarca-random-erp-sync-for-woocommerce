@@ -13,6 +13,9 @@ Plugin avanzado que permite sincronizar datos completos de WooCommerce con Rando
 - PHPUnit (para testing)
 
 
+[socomarca_user_registration]
+
+
 ## Dockerización
 
 ### Stack Completo con Docker

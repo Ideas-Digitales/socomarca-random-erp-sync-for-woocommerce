@@ -28,6 +28,8 @@ use Socomarca\RandomERP\Filters\ProductVisibilityFilter;
 use Socomarca\RandomERP\Services\DocumentService;
 use Socomarca\RandomERP\Services\CronSyncService;
 use Socomarca\RandomERP\Shortcodes\LocationStockShortcode;
+use Socomarca\RandomERP\Shortcodes\UserRegisterShortcode;
+use Socomarca\RandomERP\Ajax\UserRegisterAjaxHandler;
 use Socomarca\RandomERP\Compat\MultilocationBlockFix;
 use Socomarca\RandomERP\Frontend\ProductPageCustomizer;
 use Socomarca\RandomERP\Frontend\ProductStockValidator;
@@ -69,6 +71,7 @@ class Plugin {
         new CombinedAjaxHandler();
         new CartWarehouseSwitchHandler();
         new CronSyncAjaxHandler();
+        new UserRegisterAjaxHandler();
         
         // Inicializar el servicio de cron
         $cronService = new CronSyncService();
@@ -87,6 +90,7 @@ class Plugin {
         new DocumentService();
 
         new LocationStockShortcode();
+        new UserRegisterShortcode();
         new LocationProductFilter();
         new LocationStockFilter();
         new ProductVisibilityFilter();

@@ -114,7 +114,7 @@ abstract class BaseApiService {
         $status_code = wp_remote_retrieve_response_code($response);
         $body_raw = wp_remote_retrieve_body($response);
 
-        if ($status_code === 200) {
+        if ($status_code === 200 || $status_code === 201) {
             $body = json_decode($body_raw, true);
             
             if (isset($body['data']) && is_array($body['data'])) {

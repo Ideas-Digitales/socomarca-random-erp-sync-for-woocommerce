@@ -97,6 +97,8 @@ class AdminPages {
         $api_password = sanitize_text_field($_POST['sm_api_password'] ?? '');
         $production_token = sanitize_textarea_field($_POST['sm_production_token'] ?? '');
         $company_code = sanitize_text_field($_POST['sm_company_code'] ?? '');
+        $koen_template = sanitize_text_field($_POST['sm_koen_template'] ?? 'BOLETA');
+        $suen = sanitize_text_field($_POST['sm_suen'] ?? 'BLB');
         $company_rut = sanitize_text_field($_POST['sm_company_rut'] ?? '');
         $company_warehouse = sanitize_text_field($_POST['sm_company_warehouse'] ?? '');
         $modalidad = sanitize_text_field($_POST['sm_modalidad'] ?? '');
@@ -126,6 +128,8 @@ class AdminPages {
         update_option('sm_api_password', $api_password);
         update_option('sm_production_token', $production_token);
         update_option('sm_company_code', $company_code);
+        update_option('sm_koen_template', $koen_template);
+        update_option('sm_suen', $suen);
         update_option('sm_company_rut', $company_rut);
         update_option('sm_company_warehouse', $company_warehouse);
         update_option('sm_modalidad', $modalidad);
@@ -198,6 +202,8 @@ class AdminPages {
             'api_password' => get_option('sm_api_password', 'd3m0r4nd0m3RP'),
             'production_token' => get_option('sm_production_token', ''),
             'company_code' => get_option('sm_company_code', ''),
+            'koen_template' => get_option('sm_koen_template', 'BOLETA'),
+            'suen' => get_option('sm_suen', 'BLB'),
             'company_rut' => get_option('sm_company_rut', ''),
             'company_warehouse' => get_option('sm_company_warehouse', ''),
             'modalidad' => get_option('sm_modalidad', ''),

@@ -295,4 +295,57 @@ class EntityService extends BaseApiService {
         
         return true;
     }
+
+    public function createEntity(array $data) {
+        $this->log("Iniciando creación de entidad en el ERP. RUT: {$data['rten']}, Email: {$data['email']}, Sucursal: {$data['suen']}, Dirección: {$data['dien']}");
+        
+        $endpoint = "/web32/entidades/";
+        $response = $this->makeApiRequest($endpoint, 'POST', $data);
+        
+        if ($response === false) {
+            $this->log("Error crítico: La API de Random ERP no respondió o devolvió un código de error.");
+        } elseif (isset($response['error']) && $response['error'] !== false) {
+            $error_msg = isset($response['message']) ? $response['message'] : 'Respuesta inválida.';
+            $this->log("Fallo en creación de entidad en ERP. Mensaje: " . $error_msg . ". Datos: " . print_r($response, true));
+        } else {
+            $returned_koen = isset($response['KOEN']) ? $response['KOEN'] : $data['koen'];
+            $idmaeen = isset($response['IDMAEEN']) ? $response['IDMAEEN'] : 'N/A';
+            $this->log("Entidad creada exitosamente en el ERP. Código ERP (KOEN): {$returned_koen}, IDMAEEN: {$idmaeen}");
+        }
+        
+        return $response;
+    }
+
+    protected function log($message) {
+        $logs_dir = SOCOMARCA_ERP_PLUGIN_DIR . 'logs';
+        if (!file_exists($logs_dir)) {
+            wp_mkdir_p($logs_dir);
+        }
+        $log_file = $logs_dir . '/documents.log';
+        $timestamp = date('Y-m-d H:i:s');
+        $log_entry = "[$timestamp] EntityService: $message" . PHP_EOL;
+        file_put_contents($log_file, $log_entry, FILE_APPEND | LOCK_EX);
+    }
+
+    public function getRegionNumberByState(string $state): string {
+        $map = [
+            'CL-TA' => '1',
+            'CL-AN' => '2',
+            'CL-AT' => '3',
+            'CL-CO' => '4',
+            'CL-VS' => '5',
+            'CL-LI' => '6',
+            'CL-ML' => '7',
+            'CL-BI' => '8',
+            'CL-AR' => '9',
+            'CL-LL' => '10',
+            'CL-AI' => '11',
+            'CL-MA' => '12',
+            'CL-RM' => '13',
+            'CL-LR' => '14',
+            'CL-AP' => '15',
+            'CL-NB' => '16',
+        ];
+        return $map[$state] ?? '13';
+    }
 }
