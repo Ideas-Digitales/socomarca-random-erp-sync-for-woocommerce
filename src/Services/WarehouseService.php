@@ -88,6 +88,7 @@ class WarehouseService extends BaseApiService {
                 update_term_meta($term_id, 'random_erp_warehouse_code', $code);
                 update_term_meta($term_id, 'random_erp_kosu', sanitize_text_field($warehouse['KOSU'] ?? ''));
                 update_term_meta($term_id, 'random_erp_empresa', sanitize_text_field($warehouse['EMPRESA'] ?? ''));
+                update_term_meta($term_id, 'wcmlim_street_number', sanitize_text_field($warehouse['DIBO'] ?? ''));
             } catch (\Exception $e) {
                 $errors++;
                 $this->log('Error procesando bodega: ' . $e->getMessage());

@@ -78,11 +78,23 @@ class DocumentService extends BaseApiService {
             $razon_social = get_post_meta($order_id, 'sm_razon_social', true) ?: '';
             $giro = get_post_meta($order_id, 'sm_giro', true) ?: '';
 
-            // Construir observación con tipo de documento y RUT
-            $tipo_label = ($documento_tipo === 'factura') ? 'Factura' : 'Boleta';
-            $observacion = 'Orden desde '.get_bloginfo('name').' - #' . $order_id;
+            // Obtener notas de la orden
+            $observacion = $order->get_customer_note() ?: '';
+
+            // Obtener método de pago
+            $payment_method = $order->get_payment_method_title() ?: 'Pago a crédito';
+
+            // Construir texto2: RUT + Tipo de documento + Razón social + Giro
+            $texto2_parts = [];
             if (!empty($rut)) {
-                $observacion .= ' - (' . $tipo_label . '): ' . $rut;
+                $texto2_parts[] = $rut;
+            }
+            $texto2_parts[] = ucfirst($documento_tipo); // Tipo (Factura o Boleta)
+            if (!empty($razon_social)) {
+                $texto2_parts[] = $razon_social;
+            }
+            if (!empty($giro)) {
+                $texto2_parts[] = $giro;
             }
 
             $document_data = [
@@ -92,19 +104,14 @@ class DocumentService extends BaseApiService {
                     'tido' => $tido,
                     'modalidad' => $modalidad,
                     'lineas' => $lines,
-                    'observacion' => $observacion
+                    'observacion' => $observacion,
+                    'texto1' => $payment_method.' - Orden #' . $order_id, // Medio de pago usado
+                    'texto2' => implode(' - ', $texto2_parts), // RUT - Tipo (Persona, empresa) - Razón social - Giro
+                    'texto3' => 'Origen: ' . get_bloginfo('name'), // Origen del pedido
+                    'texto4' => 'Orden: #' . $order_id, // Número de orden de compra
+                    'texto5' => 'Fecha de pedido: ' . $order->get_date_created()->date('Y-m-d H:i:s'), // Fecha de pedido
                 ]
             ];
-
-            // Agregar texto1 solo si es Factura y tiene Razón Social
-            if ($documento_tipo === 'factura' && !empty($razon_social)) {
-                $document_data['datos']['texto1'] = 'Razon Social: ' . $razon_social;
-            }
-
-            // Agregar texto2 solo si es Factura y tiene Giro
-            if ($documento_tipo === 'factura' && !empty($giro)) {
-                $document_data['datos']['texto2'] = 'Giro: ' . $giro;
-            }
 
             if (!empty($funcionario)) {
                 $document_data['datos']['funcionario'] = $funcionario;

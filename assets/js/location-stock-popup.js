@@ -222,6 +222,7 @@
                 sessionStorage.setItem('sm_selected_location', cookieData);
                 document.cookie = 'sm_selected_location=' + encodeURIComponent(cookieData) + '; path=/; max-age=2592000';
                 console.log('[SM-LOCATION] saveCookie (sessionStorage + cookie):', cookieData);
+                $(document).trigger('sm_location_selected', { comunaName: comunaName, warehouseId: warehouseId });
             };
 
             var showReloadOverlay = function () {

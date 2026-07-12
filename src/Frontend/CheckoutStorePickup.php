@@ -15,6 +15,8 @@ class CheckoutStorePickup {
         add_action('woocommerce_checkout_update_order_meta', [$this, 'saveStoreSelection']);
         add_action('woocommerce_email_after_order_table', [$this, 'displayStoreInEmail']);
         add_action('woocommerce_admin_order_data_after_billing_address', [$this, 'displayStoreInAdmin']);
+        add_action('wp_ajax_sm_get_store_by_commune', [$this, 'ajaxGetStoreByCommune']);
+        add_action('wp_ajax_nopriv_sm_get_store_by_commune', [$this, 'ajaxGetStoreByCommune']);
     }
 
     public function enqueueAssets(): void {
@@ -37,7 +39,8 @@ class CheckoutStorePickup {
             'socomarca-checkout-store-pickup',
             'socomarcaStorePickup',
             [
-                'stores' => $this->getAvailableStores(),
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('sm_store_pickup_nonce'),
             ]
         );
     }
@@ -49,29 +52,70 @@ class CheckoutStorePickup {
             return;
         }
 
-        $selected = isset($_POST['post_data']) ? wp_parse_args(wp_unslash($_POST['post_data'])) : [];
-        $selected_store = isset($selected['sm_pickup_store_id']) ? sanitize_text_field($selected['sm_pickup_store_id']) : '';
         ?>
         <div id="sm-store-selector-wrapper" style="display:none;">
-            <h3>Selecciona la tienda donde retirar</h3>
-            <p class="form-row form-row-wide">
-                <label for="sm_pickup_store_id">Tienda de Retiro <abbr title="requerido">*</abbr></label>
-                <select
-                    name="sm_pickup_store_id"
-                    id="sm_pickup_store_id"
-                    class="select"
-                    style="width: 100%;">
-                    <option value="">-- Elige una tienda --</option>
-                    <?php foreach ($stores as $store): ?>
-                        <option value="<?php echo esc_attr($store['term_id']); ?>"
-                            <?php selected($selected_store, $store['term_id']); ?>>
-                            <?php echo esc_html($store['name'] . ' - ' . $store['address']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </p>
+            <h3>Tienda de Retiro</h3>
+            <div id="sm-store-info" class="sm-store-info-display">
+                <p><strong>Tienda:</strong> <span id="sm-store-name">-</span></p>
+                <p><strong>Dirección:</strong> <span id="sm-store-address">-</span></p>
+            </div>
+            <input type="hidden" name="sm_pickup_store_id" id="sm_pickup_store_id" value="">
         </div>
         <?php
+    }
+
+    public function ajaxGetStoreByCommune(): void {
+        if (isset($_POST['nonce']) && !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce'])), 'sm_store_pickup_nonce')) {
+            wp_send_json_error(['message' => 'Nonce inválido']);
+        }
+
+        $commune = isset($_POST['commune']) ? sanitize_text_field(wp_unslash($_POST['commune'])) : '';
+
+        if (empty($commune)) {
+            wp_send_json_error(['message' => 'Comuna no proporcionada']);
+        }
+
+        $store = $this->getStoreByCommune($commune);
+
+        if ($store) {
+            wp_send_json_success($store);
+        } else {
+            wp_send_json_error(['message' => 'Tienda no encontrada para la comuna']);
+        }
+    }
+
+    private function getStoreByCommune(string $commune): ?array {
+        $mapping = get_option('sm_location_mapping', []);
+
+        if (empty($mapping) || !is_array($mapping)) {
+            return null;
+        }
+
+        $commune = trim($commune);
+        $communeLower = strtolower($commune);
+
+        foreach ($mapping as $region) {
+            if (!isset($region['comunas']) || !is_array($region['comunas'])) {
+                continue;
+            }
+
+            foreach ($region['comunas'] as $comunaData) {
+                if (!isset($comunaData['name']) || !isset($comunaData['warehouse_id'])) {
+                    continue;
+                }
+
+                $mapCommuneLower = strtolower(trim($comunaData['name']));
+
+                if ($mapCommuneLower === $communeLower) {
+                    $store = $this->getStoreDetails((int) $comunaData['warehouse_id']);
+                    if ($store) {
+                        return $store;
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 
     public function validateStoreSelection(): void {
@@ -93,9 +137,11 @@ class CheckoutStorePickup {
         if ($is_local_pickup) {
             $store_id = isset($_POST['sm_pickup_store_id']) ? sanitize_text_field(wp_unslash($_POST['sm_pickup_store_id'])) : '';
 
+            /*
             if (empty($store_id)) {
                 wc_add_notice('Debes seleccionar una tienda para retiro.', 'error');
             }
+            */
         }
     }
 

@@ -3,11 +3,73 @@ jQuery(function($) {
 
     var $wrapper = $('#sm-store-selector-wrapper');
     var $submit = $('#place_order');
-    var $select = $('#sm_pickup_store_id');
+    var $storeIdInput = $('#sm_pickup_store_id');
+    var ajaxUrl = socomarcaStorePickup.ajaxUrl;
+    var nonce = socomarcaStorePickup.nonce;
+    var lastSelectedCommune = null;
 
     function isLocalPickup() {
         var shippingMethod = $('input[name^="shipping_method"]:checked').val() || '';
         return shippingMethod.indexOf('local_pickup') !== -1;
+    }
+
+    function getSelectedCommune() {
+        try {
+            var locationData = JSON.parse(sessionStorage.getItem('sm_selected_location'));
+            if (locationData && locationData.comuna_name) {
+                return locationData.comuna_name;
+            }
+        } catch (e) {
+            // Silently fail
+        }
+
+        if (lastSelectedCommune) {
+            return lastSelectedCommune;
+        }
+
+        return $('#billing_city').val() || '';
+    }
+
+    function displayStoreInfo(store) {
+        if (store) {
+            $('#sm-store-name').text(store.name);
+            $('#sm-store-address').text(store.address);
+            $storeIdInput.val(store.term_id);
+        } else {
+            $('#sm-store-name').text('-');
+            $('#sm-store-address').text('-');
+            $storeIdInput.val('');
+        }
+        updateSubmitButtonState();
+    }
+
+    function updateStoreDisplay() {
+        var commune = getSelectedCommune();
+
+        if (!commune) {
+            displayStoreInfo(null);
+            return;
+        }
+
+        $.ajax({
+            url: ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'sm_get_store_by_commune',
+                commune: commune,
+                nonce: nonce,
+            },
+            success: function(response) {
+                if (response.success) {
+                    displayStoreInfo(response.data);
+                } else {
+                    displayStoreInfo(null);
+                }
+            },
+            error: function() {
+                displayStoreInfo(null);
+            }
+        });
     }
 
     function updateVisibility() {
@@ -15,29 +77,12 @@ jQuery(function($) {
 
         if (pickup) {
             $wrapper.slideDown(200);
-            if (!$select.val()) {
-                // El estado del botón será controlado por CheckoutBillingFields
-                // pero aseguramos que se deshabilite si no hay tienda seleccionada
-                var rutValid = checkRutValid();
-                if (!rutValid) {
-                    $submit.prop('disabled', true).css('opacity', '0.5').css('cursor', 'not-allowed');
-                } else {
-                    $submit.prop('disabled', true).css('opacity', '0.5').css('cursor', 'not-allowed');
-                }
-            } else {
-                // Si hay tienda seleccionada, verificar RUT
-                var rutValid = checkRutValid();
-                if (rutValid) {
-                    $submit.prop('disabled', false).css('opacity', '1').css('cursor', 'pointer');
-                }
-            }
+            updateStoreDisplay();
         } else {
             $wrapper.slideUp(200);
-            // Si no es local pickup, dejar que CheckoutBillingFields maneje el estado del botón
-            if ($('#sm_rut').length) {
-                checkBillingFieldsState();
-            }
+            $storeIdInput.val('');
         }
+        updateSubmitButtonState();
     }
 
     function checkRutValid() {
@@ -98,7 +143,7 @@ jQuery(function($) {
 
         if (pickup) {
             var rutValid = checkRutValid();
-            var storeSelected = $select.val() !== '';
+            var storeSelected = $storeIdInput.val() !== '';
 
             if (rutValid && storeSelected) {
                 $submit.prop('disabled', false).css('opacity', '1').css('cursor', 'pointer');
@@ -106,7 +151,6 @@ jQuery(function($) {
                 $submit.prop('disabled', true).css('opacity', '0.5').css('cursor', 'not-allowed');
             }
         } else {
-            // CheckoutBillingFields maneja el estado
             if (checkBillingFieldsState()) {
                 $submit.prop('disabled', false).css('opacity', '1').css('cursor', 'pointer');
             } else {
@@ -115,14 +159,15 @@ jQuery(function($) {
         }
     }
 
-    // Eventos
-    $select.on('change', updateSubmitButtonState);
+    $(document).on('sm_location_selected', function(e, data) {
+        lastSelectedCommune = data.comunaName;
+        updateStoreDisplay();
+    });
+
+    $(document).on('change', '#billing_city', updateStoreDisplay);
     $(document).on('change', 'input[name^="shipping_method"]', updateVisibility);
     $(document.body).on('updated_checkout', updateVisibility);
-
-    // También monitorear cambios en RUT
     $(document).on('keyup change', '#sm_rut, #sm_razon_social, #sm_giro, input[name="sm_documento_tipo"]', updateSubmitButtonState);
 
-    // Inicializar
     updateVisibility();
 });
