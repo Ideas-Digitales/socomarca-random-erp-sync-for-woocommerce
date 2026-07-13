@@ -16,6 +16,7 @@ use Socomarca\RandomERP\Ajax\CronSyncAjaxHandler;
 use Socomarca\RandomERP\Admin\AdminPages;
 use Socomarca\RandomERP\Admin\CategoryTaxonomyAdmin;
 use Socomarca\RandomERP\Admin\LocationMappingAdmin;
+use Socomarca\RandomERP\Admin\LocationTaxonomyAdmin;
 use Socomarca\RandomERP\Admin\ProductFilterAdmin;
 use Socomarca\RandomERP\Admin\UserEntityCodeField;
 use Socomarca\RandomERP\Admin\OrderActionsAdmin;
@@ -81,6 +82,7 @@ class Plugin {
         new AdminPages();
         new CategoryTaxonomyAdmin();
         new LocationMappingAdmin();
+        new LocationTaxonomyAdmin();
         new LocationMappingAjaxHandler();
         new ProductFilterAdmin();
         new UserEntityCodeField();
@@ -116,6 +118,7 @@ class Plugin {
         
         
         add_filter('plugin_action_links_' . plugin_basename($this->getPluginFile()), [$this, 'addSettingsLink']);
+        add_filter('woocommerce_payment_gateways', [$this, 'addPaymentGateway']);
     }
     
     public function activate() {
@@ -195,5 +198,10 @@ class Plugin {
         $settings_link = '<a href="' . admin_url('admin.php?page=socomarca') . '">Ajustes</a>';
         array_unshift($links, $settings_link);
         return $links;
+    }
+
+    public function addPaymentGateway($methods) {
+        $methods[] = \Socomarca\RandomERP\Gateway\SocomarcaWebpayMallGateway::class;
+        return $methods;
     }
 }
