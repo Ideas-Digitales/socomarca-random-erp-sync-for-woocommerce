@@ -58,10 +58,35 @@ class SocomarcaWebpayMallGateway extends WC_Payment_Gateway {
                 'default'     => 'Paga con tarjetas de crédito/débito/prepago a través de Webpay Plus Mall.',
                 'desc_tip'    => true,
             ],
+            'environment' => [
+                'title'       => 'Ambiente',
+                'type'        => 'select',
+                'options'     => [
+                    'TEST'      => 'Integración (TEST)',
+                    'PRODUCCION' => 'Producción',
+                ],
+                'description' => 'Selecciona el ambiente de Transbank. En integración se usan credenciales de prueba automáticamente.',
+                'default'     => 'TEST',
+                'desc_tip'    => true,
+            ],
+            'mall_commerce_code' => [
+                'title'       => 'Código de Comercio Mall (padre)',
+                'type'        => 'text',
+                'description' => 'Código de comercio Mall (padre) entregado por Transbank. Empieza con 597 y tiene 12 dígitos. Solo se usa en ambiente Producción.',
+                'default'     => '',
+                'desc_tip'    => true,
+            ],
+            'mall_api_key' => [
+                'title'       => 'API Key Mall',
+                'type'        => 'password',
+                'description' => 'API Key (Tbk-Api-Key-Secret) entregada por Transbank para el comercio Mall. Solo se usa en ambiente Producción.',
+                'default'     => '',
+                'desc_tip'    => true,
+            ],
             'default_child_commerce_code' => [
                 'title'       => 'Código de Comercio Hijo por Defecto',
                 'type'        => 'text',
-                'description' => 'Código de comercio hijo utilizado como fallback si la bodega asociada al pedido no tiene uno configurado.',
+                'description' => 'Código de comercio hijo (12 dígitos, empieza con 597) utilizado como fallback si la bodega asociada al pedido no tiene uno configurado.',
                 'default'     => '',
                 'desc_tip'    => true,
             ],
@@ -100,8 +125,7 @@ class SocomarcaWebpayMallGateway extends WC_Payment_Gateway {
             $child_commerce_code = get_term_meta($store_id, 'sm_child_commerce_code', true);
         }
 
-        $settings = get_option('woocommerce_transbank_webpay_plus_rest_settings');
-        $environment = $settings['webpay_rest_environment'] ?? 'TEST';
+        $environment = $this->get_environment();
 
         if (empty($child_commerce_code)) {
             if ($environment === 'PRODUCCION') {
@@ -110,6 +134,8 @@ class SocomarcaWebpayMallGateway extends WC_Payment_Gateway {
                 $child_commerce_code = '597055555536'; // Integration default child
             }
         }
+
+        $this->log("Ambiente: {$environment} | Bodega ID: " . ($store_id ?: 'N/A') . " | Código hijo a usar: {$child_commerce_code}");
 
         if (empty($child_commerce_code)) {
             $this->log("Error: No se encontró código de comercio hijo para la bodega/sucursal.");
@@ -341,22 +367,38 @@ class SocomarcaWebpayMallGateway extends WC_Payment_Gateway {
         return !empty($orders) ? $orders[0] : null;
     }
 
-    private function makeTransbankRequest($method, $endpoint, $body = null) {
+    private function get_environment(): string {
+        // Primero lee el campo propio del gateway
+        $own_env = $this->get_option('environment', '');
+        if (!empty($own_env)) {
+            return $own_env;
+        }
+        // Fallback al plugin oficial de Transbank
         $settings = get_option('woocommerce_transbank_webpay_plus_rest_settings');
-        $environment = $settings['webpay_rest_environment'] ?? 'TEST';
-        
-        $this->log("makeTransbankRequest: Ambiente=" . $environment . ", CC=" . ($settings['webpay_rest_commerce_code'] ?? ''));
+        return $settings['webpay_rest_environment'] ?? 'TEST';
+    }
+
+    private function makeTransbankRequest($method, $endpoint, $body = null) {
+        $environment = $this->get_environment();
         
         if ($environment === 'PRODUCCION') {
             $api_url = 'https://webpay3g.transbank.cl/';
-            $commerce_code = $settings['webpay_rest_commerce_code'] ?? '';
-            $api_key = $settings['webpay_rest_api_key'] ?? '';
+            // Prioridad: campos propios del gateway > plugin oficial
+            $commerce_code = $this->get_option('mall_commerce_code', '');
+            $api_key       = $this->get_option('mall_api_key', '');
+            if (empty($commerce_code) || empty($api_key)) {
+                $settings      = get_option('woocommerce_transbank_webpay_plus_rest_settings');
+                $commerce_code = $commerce_code ?: ($settings['webpay_rest_commerce_code'] ?? '');
+                $api_key       = $api_key       ?: ($settings['webpay_rest_api_key'] ?? '');
+            }
         } else {
             // Integration Mall
-            $api_url = 'https://webpay3gint.transbank.cl/';
+            $api_url       = 'https://webpay3gint.transbank.cl/';
             $commerce_code = '597055555535'; // Mall Integration Commerce Code
-            $api_key = '579B532A7440BB0C9079DED94D31EA1615BACEB56610332264630D42D0A36B1C';
+            $api_key       = '579B532A7440BB0C9079DED94D31EA1615BACEB56610332264630D42D0A36B1C';
         }
+        
+        $this->log("makeTransbankRequest: Ambiente={$environment} | URL={$api_url} | Mall CC={$commerce_code}");
 
         $url = $api_url . $endpoint;
         
@@ -455,8 +497,7 @@ class SocomarcaWebpayMallGateway extends WC_Payment_Gateway {
             $child_commerce_code = get_term_meta($store_id, 'sm_child_commerce_code', true);
         }
 
-        $settings = get_option('woocommerce_transbank_webpay_plus_rest_settings');
-        $environment = $settings['webpay_rest_environment'] ?? 'TEST';
+        $environment = $this->get_environment();
 
         if (empty($child_commerce_code)) {
             if ($environment === 'PRODUCCION') {

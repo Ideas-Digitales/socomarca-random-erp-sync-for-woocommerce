@@ -108,15 +108,17 @@ class CategoryService extends BaseApiService {
     }
 
     private function processLevelOneCategory($category) {
-        $term_data = [
-            'name'        => $category['NOMBRE'],
-            'slug'        => sanitize_title($category['NOMBRE']),
-            'description' => '',
-        ];
-
         $existing_term = $this->findTermByErpKey($category['LLAVE']);
 
         if ($existing_term) {
+            // No se envía 'slug': el ERP puede repetir NOMBRE entre familias distintas
+            // (ej. "REPOSTERIA" en dos ramas), y forzar el mismo slug en cada sync
+            // choca con el slug único que ya tiene el otro término.
+            $term_data = [
+                'name'        => $category['NOMBRE'],
+                'description' => '',
+            ];
+
             $result = wp_update_term($existing_term->term_id, 'product_cat', $term_data);
             if (!is_wp_error($result)) {
                 $this->saveTermMeta($existing_term->term_id, $category);
@@ -125,6 +127,12 @@ class CategoryService extends BaseApiService {
                 return ['success' => false, 'error' => 'Error actualizando categoría ' . $category['CODIGO'] . ': ' . $result->get_error_message()];
             }
         } else {
+            $term_data = [
+                'name'        => $category['NOMBRE'],
+                'slug'        => sanitize_title($category['NOMBRE']),
+                'description' => '',
+            ];
+
             $result = wp_insert_term($term_data['name'], 'product_cat', $term_data);
             if (!is_wp_error($result)) {
                 $this->saveTermMeta($result['term_id'], $category);
@@ -150,16 +158,17 @@ class CategoryService extends BaseApiService {
             return ['success' => false, 'error' => "No se encontro categoria padre '$parent_llave' para {$category['CODIGO']} (LLAVE: {$category['LLAVE']})"];
         }
 
-        $term_data = [
-            'name'        => $category['NOMBRE'],
-            'slug'        => sanitize_title($category['NOMBRE']),
-            'parent'      => $parent_term->term_id,
-            'description' => '',
-        ];
-
         $existing_term = $this->findTermByErpKey($category['LLAVE']);
 
         if ($existing_term) {
+            // No se envía 'slug' por la misma razón que en processLevelOneCategory():
+            // el NOMBRE se repite entre subfamilias de ramas distintas del ERP.
+            $term_data = [
+                'name'        => $category['NOMBRE'],
+                'parent'      => $parent_term->term_id,
+                'description' => '',
+            ];
+
             $result = wp_update_term($existing_term->term_id, 'product_cat', $term_data);
             if (!is_wp_error($result)) {
                 $this->saveTermMeta($existing_term->term_id, $category);
@@ -168,6 +177,13 @@ class CategoryService extends BaseApiService {
                 return ['success' => false, 'error' => 'Error actualizando subcategoria ' . $category['CODIGO'] . ': ' . $result->get_error_message()];
             }
         } else {
+            $term_data = [
+                'name'        => $category['NOMBRE'],
+                'slug'        => sanitize_title($category['NOMBRE']),
+                'parent'      => $parent_term->term_id,
+                'description' => '',
+            ];
+
             $result = wp_insert_term($term_data['name'], 'product_cat', $term_data);
             if (!is_wp_error($result)) {
                 $this->saveTermMeta($result['term_id'], $category);

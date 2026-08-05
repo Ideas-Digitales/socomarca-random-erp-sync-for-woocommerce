@@ -513,6 +513,43 @@
                     </tr>
                 </tbody>
             </table>
+
+            <h2>Notificaciones de sucursales</h2>
+            <p>Cuando se crea un nuevo pedido, el sistema enviará automáticamente un correo de aviso al email configurado en cada sucursal (campo <code>cmlim_email</code> de la taxonomía Locations).</p>
+            <table class="form-table">
+                <tbody>
+                    <tr>
+                        <th>
+                            Post ID del template de email
+                        </th>
+                        <td>
+                            <input
+                                name="sm_location_notification_email_post_id"
+                                type="number"
+                                id="sm_location_notification_email_post_id"
+                                value="<?php echo esc_attr($location_notification_email_post_id); ?>"
+                                class="regular-text"
+                                min="0"
+                                step="1"
+                                placeholder="Ej: 1288"
+                            >
+                            <p class="description">
+                                ID del post de WordPress que se usará como template HTML del email de notificación a la sucursal.
+                                En el contenido del post puedes usar los placeholders:
+                                <code>{{order_number}}</code>, <code>{{order_date}}</code>, <code>{{order_total}}</code>,
+                                <code>{{customer_name}}</code>, <code>{{customer_email}}</code>, <code>{{customer_phone}}</code>,
+                                <code>{{location_name}}</code>, <code>{{order_items}}</code>, <code>{{shipping_address}}</code>,
+                                <code>{{order_url}}</code>.
+                                <br>Deja en <strong>0</strong> para usar el email por defecto del sistema.
+                                <?php if (!empty($location_notification_email_post_id)) : ?>
+                                    <br><a href="<?php echo esc_url(admin_url('post.php?post=' . $location_notification_email_post_id . '&action=edit')); ?>" target="_blank">Editar post template →</a>
+                                <?php endif; ?>
+                            </p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
             <p class="submit"><input type="submit" name="submit" id="submit" class="button button-primary" value="Guardar cambios"></p>
         </form>
     </div>

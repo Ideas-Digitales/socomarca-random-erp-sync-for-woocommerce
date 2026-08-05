@@ -293,6 +293,19 @@ RANDOM_ERP_COMPANY_CODE=01
 - Validación de conexión
 - Configuración desde panel
 
+
+  Credencial                                         │ Dónde se configura
+  ───────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────
+   Código Mall (padre)                               │ Plugin oficial Transbank → webpay_rest_commerce_code
+   API Key Mall                                      │ Plugin oficial Transbank → webpay_rest_api_key
+   Ambiente (TEST/PRODUCCION)                        │ Plugin oficial Transbank → webpay_rest_environment
+   Código hijo por location                          │ Taxonomía locations → campo sm_child_commerce_code
+   Código hijo fallback                              │ Ajustes del gateway Socomarca → "Código hijo por defecto"
+  
+  │ [!IMPORTANT]
+  │ El plugin oficial de Transbank debe estar instalado y activo porque el gateway Socomarca lee su configuración vía get_option('woocommerce_transbank_webpay_plus_rest_settings'). Si no está instalado,
+  │ esa opción no existe y en producción quedarán vacíos el commerce code y api key.
+
 ## Soporte
 Para soporte técnico, por favor contacta a:
 - **Autor**: Javier Aguero

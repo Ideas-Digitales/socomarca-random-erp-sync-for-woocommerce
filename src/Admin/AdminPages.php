@@ -147,6 +147,7 @@ class AdminPages {
         update_option('sm_tido', $tido);
         update_option('sm_funcionario', $funcionario);
         update_option('sm_dry_run', $dry_run);
+        update_option('sm_location_notification_email_post_id', intval($_POST['sm_location_notification_email_post_id'] ?? 0));
         
         // Reconfigurar el cron job
         $cronService = new \Socomarca\RandomERP\Services\CronSyncService();
@@ -221,6 +222,7 @@ class AdminPages {
             'tido' => get_option('sm_tido', 'BLV'),
             'funcionario' => get_option('sm_funcionario', ''),
             'dry_run' => get_option('sm_dry_run', false),
+            'location_notification_email_post_id' => intval(get_option('sm_location_notification_email_post_id', 0)),
             'last_sync' => $cronService->getLastSyncInfo()
         ];
     }

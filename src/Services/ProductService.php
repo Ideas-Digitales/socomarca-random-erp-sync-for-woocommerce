@@ -135,50 +135,53 @@ class ProductService extends BaseApiService {
     
     private function findProductCategories($product) {
         $category_ids = [];
-        
-        if (!empty($product['FMPR'])) {
-            
-            $main_category = \get_terms([
-                'taxonomy' => 'product_cat',
-                'meta_query' => [
-                    [
-                        'key' => 'erp_code',
-                        'value' => $product['FMPR'],
-                        'compare' => '='
-                    ]
-                ],
-                'hide_empty' => false,
-                'number' => 1
-            ]);
-            
-            if (!empty($main_category)) {
-                $category_ids[] = $main_category[0]->term_id;
-            } else {
-            }
+
+        if (empty($product['FMPR'])) {
+            return $category_ids;
         }
-        
+
+        // FMPR = familia (nivel 1), PFPR = subfamilia (nivel 2), HFPR = sub-subfamilia (nivel 3).
+        // La LLAVE se arma concatenando estos códigos, igual que CategoryService al crear las categorías.
+        $key_parts = [$product['FMPR']];
+
         if (!empty($product['PFPR'])) {
-            
-            $subcategory = \get_terms([
-                'taxonomy' => 'product_cat',
-                'meta_query' => [
-                    [
-                        'key' => 'erp_code',
-                        'value' => $product['PFPR'],
-                        'compare' => '='
-                    ]
-                ],
-                'hide_empty' => false,
-                'number' => 1
-            ]);
-            
-            if (!empty($subcategory)) {
-                $category_ids[] = $subcategory[0]->term_id;
-            } else {
+            $key_parts[] = $product['PFPR'];
+        }
+
+        if (!empty($product['HFPR'])) {
+            $key_parts[] = $product['HFPR'];
+        }
+
+        $erp_key = '';
+
+        foreach ($key_parts as $part) {
+            $erp_key = ($erp_key === '') ? $part : $erp_key . '/' . $part;
+
+            $term = $this->findTermByErpKey($erp_key);
+
+            if ($term) {
+                $category_ids[] = $term->term_id;
             }
         }
-        
+
         return $category_ids;
+    }
+
+    private function findTermByErpKey($llave) {
+        $terms = \get_terms([
+            'taxonomy' => 'product_cat',
+            'meta_query' => [
+                [
+                    'key' => 'erp_key',
+                    'value' => $llave,
+                    'compare' => '='
+                ]
+            ],
+            'hide_empty' => false,
+            'number' => 1
+        ]);
+
+        return (!empty($terms) && !\is_wp_error($terms)) ? $terms[0] : null;
     }
     
     private function updateExistingProduct($product_id, $product, $category_ids) {
@@ -197,8 +200,6 @@ class ProductService extends BaseApiService {
         $wc_product->set_status('publish');
         $wc_product->set_catalog_visibility('visible');
         $wc_product->set_manage_stock(true);
-        $wc_product->set_stock_quantity(0);
-        $wc_product->set_regular_price(0);
 
         if (!empty($category_ids)) {
             $wc_product->set_category_ids($category_ids);

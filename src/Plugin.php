@@ -35,6 +35,7 @@ use Socomarca\RandomERP\Compat\MultilocationBlockFix;
 use Socomarca\RandomERP\Frontend\ProductPageCustomizer;
 use Socomarca\RandomERP\Frontend\ProductStockValidator;
 use Socomarca\RandomERP\Frontend\ZeroPriceValidator;
+use Socomarca\RandomERP\Services\LocationOrderNotificationService;
 use Socomarca\RandomERP\Frontend\CheckoutBillingFields;
 use Socomarca\RandomERP\Frontend\CheckoutStorePickup;
 
@@ -103,6 +104,7 @@ class Plugin {
         new ZeroPriceValidator();
         new CheckoutBillingFields();
         new CheckoutStorePickup();
+        new LocationOrderNotificationService();
 
     }
     
@@ -155,6 +157,7 @@ class Plugin {
         add_option('sm_production_token', '');
         add_option('sm_company_code', '01');
         add_option('sm_company_rut', '134549696');
+        add_option('sm_location_notification_email_post_id', '0');
     }
     
     private function cleanupScheduledTasks() {

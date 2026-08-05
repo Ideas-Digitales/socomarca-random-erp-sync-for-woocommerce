@@ -99,17 +99,18 @@ class DocumentService extends BaseApiService {
 
             $document_data = [
                 'datos' => [
-                    'empresa' => $company_code,
+                    'empresa'       => $company_code,
                     'codigoEntidad' => $entity_code,
-                    'tido' => $tido,
-                    'modalidad' => $modalidad,
-                    'lineas' => $lines,
-                    'observacion' => $observacion,
-                    'texto1' => $payment_method.' - Orden #' . $order_id, // Medio de pago usado
-                    'texto2' => implode(' - ', $texto2_parts), // RUT - Tipo (Persona, empresa) - Razón social - Giro
-                    'texto3' => 'Origen: ' . get_bloginfo('name'), // Origen del pedido
-                    'texto4' => 'Orden: #' . $order_id, // Número de orden de compra
-                    'texto5' => 'Fecha de pedido: ' . $order->get_date_created()->date('Y-m-d H:i:s'), // Fecha de pedido
+                    'tido'          => $tido,
+                    'modalidad'     => $modalidad,
+                    'lineas'        => $lines,
+                    'observacion'   => $observacion,
+                    'kobo'          => $this->get_warehouse_kobo_from_order($order),
+                    'texto1'        => $payment_method . ' - Orden #' . $order_id,
+                    'texto2'        => implode(' - ', $texto2_parts),
+                    'texto3'        => 'Origen: ' . get_bloginfo('name'),
+                    'texto4'        => 'Orden: #' . $order_id,
+                    'texto5'        => 'Fecha de pedido: ' . $order->get_date_created()->date('Y-m-d H:i:s'),
                 ]
             ];
 
@@ -157,16 +158,117 @@ class DocumentService extends BaseApiService {
         }
     }
     
+    /**
+     * Obtiene el código de entidad ERP para el pedido.
+     *
+     * Flujo de resolución:
+     *  1. Si el usuario está logueado → user_meta random_erp_entity_code.
+     *  2. Si es invitado → busca por RUT (sm_rut del pedido) en user_meta.
+     *  3. Si el RUT está registrado en WP → usa su entity_code y lo vincula al pedido.
+     *  4. Si no está registrado → genera un código temporal "GUEST-{order_id}" y
+     *     lo guarda en el pedido para futura vinculación.
+     *  5. Fallback → default entity code de configuración.
+     */
     private function get_entity_code_from_order($order) {
+        // 1. Usuario logueado
         $user = $order->get_user();
         if ($user) {
             $entity_code = get_user_meta($user->ID, 'random_erp_entity_code', true);
             if ($entity_code) {
+                $this->log("Entidad resuelta por usuario logueado ({$user->ID}): {$entity_code}");
                 return $entity_code;
             }
         }
-        
-        return get_option('sm_default_entity_code', '5');
+
+        // 2. Invitado con RUT en el pedido → buscar si está registrado en WP/ERP
+        $order_id = $order->get_id();
+        $rut      = get_post_meta($order_id, 'sm_rut', true);
+
+        if (!empty($rut)) {
+            $existing_users = get_users([
+                'meta_key'   => 'rut',
+                'meta_value' => $rut,
+                'number'     => 1,
+                'fields'     => ['ID'],
+            ]);
+
+            if (!empty($existing_users)) {
+                $matched_user_id = $existing_users[0]->ID;
+                $entity_code     = get_user_meta($matched_user_id, 'random_erp_entity_code', true);
+
+                if ($entity_code) {
+                    // 3. RUT encontrado en WP y tiene entidad ERP → vincular al pedido
+                    update_post_meta($order_id, '_sm_guest_resolved_user_id', $matched_user_id);
+                    update_post_meta($order_id, '_sm_guest_resolved_entity_code', $entity_code);
+                    $this->log("Invitado con RUT {$rut} resuelto al usuario WP #{$matched_user_id}, entidad: {$entity_code}");
+                    return $entity_code;
+                }
+            }
+
+            // 4. RUT no registrado en el ERP → usar entidad por defecto
+            $default = get_option('sm_default_entity_code', '5');
+            $this->log("Invitado con RUT {$rut} no encontrado en el ERP. Usando entidad por defecto: {$default}");
+            return $default;
+        }
+
+        // 5. Fallback: sin RUT ni usuario
+        $default = get_option('sm_default_entity_code', '5');
+        $this->log("Sin RUT ni usuario registrado para pedido #{$order_id}. Usando entidad por defecto: {$default}");
+        return $default;
+    }
+
+    /**
+     * Obtiene el código KOBO (random_erp_warehouse_code) de la bodega
+     * asociada al pedido a través del sm_pickup_store_id.
+     * Si no hay bodega asociada, retorna cadena vacía.
+     */
+    private function get_warehouse_kobo_from_order($order): string {
+        $order_id = $order->get_id();
+        $store_id = (int) get_post_meta($order_id, 'sm_pickup_store_id', true);
+
+        if (empty($store_id)) {
+            // Intentar resolver por ciudad de envío
+            $commune = $order->get_shipping_city() ?: $order->get_billing_city();
+            if (!empty($commune)) {
+                $store_id = $this->resolve_store_id_by_commune($commune);
+            }
+        }
+
+        if (empty($store_id)) {
+            $this->log("No se encontró bodega para el pedido #{$order_id}. KOBO vacío.");
+            return '';
+        }
+
+        $kobo = get_term_meta($store_id, 'random_erp_warehouse_code', true);
+        $this->log("Pedido #{$order_id}: Bodega term_id={$store_id}, KOBO=" . ($kobo ?: '(vacío)'));
+        return (string) ($kobo ?: '');
+    }
+
+    /**
+     * Resuelve el term_id de la location usando el mapeo de comunas.
+     */
+    private function resolve_store_id_by_commune(string $commune): int {
+        $mapping      = get_option('sm_location_mapping', []);
+        $communeLower = strtolower(trim($commune));
+
+        if (!is_array($mapping)) {
+            return 0;
+        }
+
+        foreach ($mapping as $region) {
+            if (empty($region['comunas']) || !is_array($region['comunas'])) {
+                continue;
+            }
+            foreach ($region['comunas'] as $comunaData) {
+                if (empty($comunaData['name']) || empty($comunaData['warehouse_id'])) {
+                    continue;
+                }
+                if (strtolower(trim($comunaData['name'])) === $communeLower) {
+                    return (int) $comunaData['warehouse_id'];
+                }
+            }
+        }
+        return 0;
     }
     
     private function build_order_lines($order) {
