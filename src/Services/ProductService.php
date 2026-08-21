@@ -140,16 +140,23 @@ class ProductService extends BaseApiService {
             return $category_ids;
         }
 
-        // FMPR = familia (nivel 1), PFPR = subfamilia (nivel 2), HFPR = sub-subfamilia (nivel 3).
-        // La LLAVE se arma concatenando estos códigos, igual que CategoryService al crear las categorías.
-        $key_parts = [$product['FMPR']];
+        $fmpr = $product['FMPR'];
+        $pfpr = !empty($product['PFPR']) ? $product['PFPR'] : '';
+        $hfpr = !empty($product['HFPR']) ? $product['HFPR'] : '';
 
-        if (!empty($product['PFPR'])) {
-            $key_parts[] = $product['PFPR'];
-        }
+        // Caso normal: FMPR = familia (nivel 1), PFPR = subfamilia (nivel 2), HFPR = sub-subfamilia (nivel 3).
+        if ($this->isNivelUnoCode($fmpr)) {
+            $key_parts = array_filter([$fmpr, $pfpr, $hfpr], fn($p) => $p !== '');
+        } else {
+            // El ERP omite el nivel 1 en algunos productos (rama SECOS): FMPR viene con el
+            // código de nivel 2 directo y PFPR es el nivel 3; HFPR no se usa en este caso.
+            $nivel_uno_code = $this->findParentNivelUnoCode($fmpr);
 
-        if (!empty($product['HFPR'])) {
-            $key_parts[] = $product['HFPR'];
+            if ($nivel_uno_code === null) {
+                return $category_ids;
+            }
+
+            $key_parts = array_filter([$nivel_uno_code, $fmpr, $pfpr], fn($p) => $p !== '');
         }
 
         $erp_key = '';
@@ -165,6 +172,44 @@ class ProductService extends BaseApiService {
         }
 
         return $category_ids;
+    }
+
+    private function isNivelUnoCode($code) {
+        $term = $this->findTermByErpKey($code);
+
+        if (!$term) {
+            return false;
+        }
+
+        return \get_term_meta($term->term_id, 'erp_level', true) == 1;
+    }
+
+    private function findParentNivelUnoCode($nivel_dos_code) {
+        $nivel_uno_terms = \get_terms([
+            'taxonomy' => 'product_cat',
+            'meta_query' => [
+                [
+                    'key' => 'erp_level',
+                    'value' => '1',
+                    'compare' => '='
+                ]
+            ],
+            'hide_empty' => false
+        ]);
+
+        if (empty($nivel_uno_terms) || \is_wp_error($nivel_uno_terms)) {
+            return null;
+        }
+
+        foreach ($nivel_uno_terms as $term) {
+            $code = \get_term_meta($term->term_id, 'erp_key', true);
+
+            if ($code !== '' && $this->findTermByErpKey($code . '/' . $nivel_dos_code)) {
+                return $code;
+            }
+        }
+
+        return null;
     }
 
     private function findTermByErpKey($llave) {

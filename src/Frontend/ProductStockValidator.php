@@ -76,8 +76,13 @@ class ProductStockValidator {
                     console.log('[SM-VALIDATOR] Producto sin stock en ubicación seleccionada, deshabilitando carrito');
 
                     // Ocultar el precio y el mensaje de stock disponible
-                    $('p.stock').hide();
-                    $('.price').hide();
+                    //$('p.stock').hide();
+                    //$('.price').hide();
+
+                    $(".stock in-stock").hide();
+                    $(".sm-product-extra-meta").hide();
+                    $("form.cart").hide();
+                    $(".stock.in-stock").text('Sin existencias').css('color', '#a00').show();
 
                     // Cambiar botón de compra
                     var $form = $('form.cart');
