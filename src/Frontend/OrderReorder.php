@@ -23,6 +23,8 @@ class OrderReorder {
             return $actions;
         }
 
+        unset($actions['order-again']);
+
         $actions['reorder'] = [
             'url'        => '#sm-reorder-' . $order->get_id(),
             'name'       => 'Pedir de nuevo',

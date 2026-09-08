@@ -514,7 +514,7 @@ class SocomarcaWebpayMallGateway extends WC_Payment_Gateway {
             $child_commerce_code = 'No configurado';
         }
 
-        echo '<pre style="background: #f5f5f5; border: 1px solid #ddd; padding: 10px; margin: 10px 0; font-family: monospace; font-size: 13px; border-radius: 4px; color: #333;">Codigo de comercio: ' . esc_html($child_commerce_code) . '</pre>';
+        //echo '<pre style="background: #f5f5f5; border: 1px solid #ddd; padding: 10px; margin: 10px 0; font-family: monospace; font-size: 13px; border-radius: 4px; color: #333;">Codigo de comercio: ' . esc_html($child_commerce_code) . '</pre>';
     }
 
     private function log($message) {

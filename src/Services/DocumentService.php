@@ -300,11 +300,48 @@ class DocumentService extends BaseApiService {
             
             $lines[] = [
                 'cantidad' => $item->get_quantity(),
-                'codigoProducto' => $sku
+                'codigoProducto' => $sku,
+                'desc1' => $this->calculate_discount_percent($item, $product),
             ];
         }
-        
+
         return $lines;
+    }
+
+    /**
+     * Calcula el descuento total de la linea como porcentaje (no como monto).
+     *
+     * Considera ambos casos combinados:
+     *   - Descuento del producto: precio regular vs precio de oferta / precio B2B
+     *     (reflejado en el subtotal de la linea).
+     *   - Descuento por cupon: diferencia entre el subtotal de la linea y el
+     *     total de la linea (get_subtotal() - get_total()).
+     *
+     * Compara el precio regular unitario contra el precio unitario realmente
+     * pagado (total de la linea, sin impuestos, ya con cupones aplicados).
+     * Retorna 0 si no hay descuento.
+     */
+    private function calculate_discount_percent($item, $product): float {
+        $quantity = (int) $item->get_quantity();
+        if ($quantity <= 0) {
+            return 0.0;
+        }
+
+        $regular_price = (float) $product->get_regular_price();
+        if ($regular_price <= 0) {
+            return 0.0;
+        }
+
+        // get_total() ya descuenta los cupones aplicados a la linea; get_subtotal()
+        // es antes de cupones pero despues de precio de oferta / precio B2B.
+        $paid_unit_price = (float) $item->get_total() / $quantity;
+        if ($paid_unit_price >= $regular_price) {
+            return 0.0;
+        }
+
+        $percent = (1 - ($paid_unit_price / $regular_price)) * 100;
+
+        return round($percent, 2);
     }
     
     public function create_document($document_data) {

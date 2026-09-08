@@ -34,6 +34,7 @@ use Socomarca\RandomERP\Shortcodes\LocationStockShortcode;
 use Socomarca\RandomERP\Shortcodes\UserRegisterShortcode;
 use Socomarca\RandomERP\Ajax\UserRegisterAjaxHandler;
 use Socomarca\RandomERP\Compat\MultilocationBlockFix;
+use Socomarca\RandomERP\Compat\MultilocaSessionRehydrate;
 use Socomarca\RandomERP\Frontend\ProductPageCustomizer;
 use Socomarca\RandomERP\Frontend\ProductStockValidator;
 use Socomarca\RandomERP\Frontend\StockBadgeCustomizer;
@@ -106,6 +107,7 @@ class Plugin {
         new JetSearchFilter();
         new CheckoutShippingFilter();
         new MultilocationBlockFix();
+        new MultilocaSessionRehydrate();
         new ProductPageCustomizer();
         new ProductStockValidator();
         new StockBadgeCustomizer();
