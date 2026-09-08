@@ -41,6 +41,15 @@
                 </tr>
                 <tr>
                     <th>
+                        Marcas
+                    </th>
+                    <td class="sm_sync" data-action="sm_get_brands">
+                        <a class="button" href="#">Sincronizar marcas</a>
+                        <span class="sm_sync_result"></span>
+                    </td>
+                </tr>
+                <tr>
+                    <th>
                         Productos
                     </th>
                     <td class="sm_sync_products">
@@ -73,15 +82,6 @@
                                 [0 procesados / 0 actualizados]
                             </span>
                         </span>
-                    </td>
-                </tr>
-                <tr>
-                    <th>
-                        Marcas
-                    </th>
-                    <td class="sm_sync" data-action="sm_get_brands">
-                        <a class="button" href="#">Sincronizar marcas</a>
-                        <span class="sm_sync_result"></span>
                     </td>
                 </tr>
                 <tr>

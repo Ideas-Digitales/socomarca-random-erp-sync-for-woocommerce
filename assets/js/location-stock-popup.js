@@ -16,10 +16,35 @@
 
         init: function () {
             this.bindEvents();
+            this.watchForLocationRequiredNotice();
+
+            var saved = this.parseCookie();
+            if (saved && saved.comuna_name) {
+                this.selectedRegionId    = saved.region_id;
+                this.selectedRegionName  = saved.region_name;
+                this.selectedComunaId    = saved.comuna_id;
+                this.selectedComunaName  = saved.comuna_name;
+                this.selectedWarehouseId = saved.warehouse_id;
+                this.updateTriggerText(saved.region_name, saved.comuna_name);
+            }
+
             this.restoreFromConfig();
 
-            if (!SmLocationPopup.parseCookie()) {
+            if (!saved) {
                 SmLocationPopup.openModal();
+            }
+        },
+
+        updateTriggerText: function (regionName, comunaName) {
+            if (!comunaName) return;
+            var reg = (regionName || '').trim();
+            var com = (comunaName || '').trim();
+            var text = reg ? (reg + ' - ' + com) : com;
+            var $triggers = $('.sm-location-popup-trigger');
+            if ($triggers.length) {
+                $triggers.html(
+                    text + ' <span class="sm-trigger-change">(cambiar)</span>'
+                );
             }
         },
 
@@ -76,7 +101,13 @@
         },
 
         openModal: function () {
-            $('#sm-location-modal').fadeIn(200);
+            var $modal = $('#sm-location-modal');
+            if (!$modal.length) {
+                // El modal no esta en el DOM en esta pagina: no bloquear el
+                // scroll del body si no hay nada visible que mostrar.
+                return;
+            }
+            $modal.fadeIn(200);
             $('body').addClass('sm-modal-open');
         },
 
@@ -87,36 +118,34 @@
         },
 
         restoreFromConfig: function () {
-            var hasCookie = !!SmLocationPopup.parseCookie();
+            var saved     = SmLocationPopup.parseCookie();
+            var hasSaved  = !!saved;
 
             // Si el producto no tiene stock en la ubicación por defecto, no pre-seleccionar
             // El usuario debe elegir una bodega manualmente que tenga stock
-            if (!hasCookie && typeof window.smProductHasStock !== 'undefined' && !window.smProductHasStock) {
+            if (!hasSaved && typeof window.smProductHasStock !== 'undefined' && !window.smProductHasStock) {
                 console.log('[SM-LOCATION] Producto sin stock, no pre-seleccionando ubicación');
                 return;
             }
 
-            var regionId  = hasCookie ? sm_location_popup.selected_region : sm_location_popup.default_region;
-            var comunaId  = hasCookie ? sm_location_popup.selected_comuna  : sm_location_popup.default_comuna;
+            var regionId   = (saved && saved.region_id) ? saved.region_id : (sm_location_popup.selected_region || sm_location_popup.default_region);
+            var comunaId   = (saved && saved.comuna_id) ? saved.comuna_id : (sm_location_popup.selected_comuna || sm_location_popup.default_comuna);
+            var regionName = (saved && saved.region_name) ? saved.region_name : null;
 
             if (!regionId) return;
 
             var $regionSelect = $('#sm-region-select');
             $regionSelect.val(regionId);
-            var regionName = $regionSelect.find('option:selected').text();
+            if (!regionName) {
+                regionName = $regionSelect.find('option:selected').text();
+            }
 
             SmLocationPopup.loadComunas(regionId, regionName, comunaId, function () {
-                if (hasCookie) return;
-
                 var $comunaSelect = $('#sm-comuna-select');
                 var comunaName    = $comunaSelect.find('option:selected').text();
-                if (!comunaName || !SmLocationPopup.selectedComunaId) return;
-
-                var $trigger = $('.sm-location-popup-trigger');
-                $trigger.html(
-                    regionName + ' - ' + comunaName +
-                    ' <span class="sm-trigger-change">(cambiar)</span>'
-                );
+                if (comunaName && SmLocationPopup.selectedComunaId) {
+                    SmLocationPopup.updateTriggerText(regionName, comunaName);
+                }
             });
         },
 
@@ -219,9 +248,13 @@
                     comuna_name:  comunaName,
                     warehouse_id: newWarehouseId,
                 });
-                sessionStorage.setItem('sm_selected_location', cookieData);
-                document.cookie = 'sm_selected_location=' + encodeURIComponent(cookieData) + '; path=/; max-age=2592000';
-                console.log('[SM-LOCATION] saveCookie (sessionStorage + cookie):', cookieData);
+                try {
+                    localStorage.setItem('sm_selected_location', cookieData);
+                    sessionStorage.setItem('sm_selected_location', cookieData);
+                } catch (e) {}
+                document.cookie = 'sm_selected_location=' + encodeURIComponent(cookieData) + '; path=/; max-age=2592000; SameSite=Lax';
+                console.log('[SM-LOCATION] saveCookie (storage + cookie):', cookieData);
+                SmLocationPopup.updateTriggerText(regionName, comunaName);
                 $(document).trigger('sm_location_selected', { comunaName: comunaName, warehouseId: warehouseId });
             };
 
@@ -480,22 +513,115 @@
             }, 2000);
         },
 
+        /**
+         * El plugin multiloca-lite bloquea el agregar al carrito sin ubicacion
+         * seleccionada mostrando el aviso "Please select a location before
+         * adding to cart.". En este sitio hay varios mecanismos de agregar al
+         * carrito (ajax estandar de WooCommerce, ajax propio de
+         * woocommerce-cart-all-in-one, y un widget de Elementor a medida), cada
+         * uno renderiza ese aviso de forma distinta. En vez de parchear cada
+         * uno, se detecta el texto del aviso donde aparezca en el DOM (al
+         * cargar la pagina o inyectado por ajax) y se reemplaza por el modal
+         * de seleccion de ubicacion.
+         */
+        watchForLocationRequiredNotice: function () {
+            var TARGET_TEXT  = 'select a location before adding to cart';
+            var HANDLED_FLAG = 'smLocationNoticeHandled';
+
+            var isMatch = function ($el) {
+                return $el.children().length === 0 && $el.text().toLowerCase().indexOf(TARGET_TEXT) !== -1;
+            };
+
+            var handleMatch = function ($leaf) {
+                // Subir al contenedor del aviso (li, div, etc.) en vez de dejar
+                // un wrapper vacio con padding/borde tras quitar solo el texto.
+                var $container = $leaf.closest('.woocommerce-error, .woocommerce-notices-wrapper, .vicatna-message-wrap, li, div');
+                var $target    = $container.length ? $container : $leaf;
+
+                if ($target.data(HANDLED_FLAG)) {
+                    return;
+                }
+                $target.data(HANDLED_FLAG, true);
+                $target.remove();
+
+                // Si el usuario ya tiene una ubicacion seleccionada no se abre
+                // el modal automaticamente: el aviso suele venir de una
+                // desincronizacion de sesion o de falta de stock en la bodega,
+                // no de que falte elegir ubicacion.
+                var saved = SmLocationPopup.parseCookie();
+                if (!saved || !saved.comuna_name) {
+                    SmLocationPopup.openModal();
+                }
+            };
+
+            // Escaneo inicial: solo se revisan los descendientes de body, nunca
+            // el body mismo (evita eliminar la pagina completa si el texto
+            // aparece en cualquier parte, por ejemplo dentro de un script).
+            var scanDescendants = function (root) {
+                $(root).find('*').each(function () {
+                    var $el = $(this);
+                    if (isMatch($el)) {
+                        handleMatch($el);
+                    }
+                });
+            };
+
+            // Chequeo de un nodo agregado por ajax: puede ser el propio aviso
+            // (sin hijos) o un contenedor que lo incluya entre sus descendientes.
+            var checkAddedNode = function (node) {
+                var $node = $(node);
+                if (isMatch($node)) {
+                    handleMatch($node);
+                } else {
+                    scanDescendants(node);
+                }
+            };
+
+            scanDescendants(document.body);
+
+            if (!window.MutationObserver || !document.body) {
+                return;
+            }
+
+            var observer = new MutationObserver(function (mutations) {
+                mutations.forEach(function (mutation) {
+                    $(mutation.addedNodes).each(function () {
+                        if (this.nodeType === 1) {
+                            checkAddedNode(this);
+                        }
+                    });
+                });
+            });
+
+            observer.observe(document.body, { childList: true, subtree: true });
+        },
+
         parseCookie: function () {
             var data = null;
 
-            // Intentar leer de sessionStorage primero (más rápido y confiable)
-            var sessionData = sessionStorage.getItem('sm_selected_location');
-            if (sessionData) {
-                try {
-                    data = JSON.parse(sessionData);
-                    console.log('[SM-LOCATION] parseCookie - Found in sessionStorage:', data);
-                    return data;
-                } catch (e) {
-                    console.log('[SM-LOCATION] parseCookie - sessionStorage parse error:', e);
+            // 1. Intentar leer de localStorage primero
+            try {
+                var localData = localStorage.getItem('sm_selected_location');
+                if (localData) {
+                    data = JSON.parse(localData);
+                    if (data && data.comuna_name) {
+                        return data;
+                    }
                 }
-            }
+            } catch (e) {}
 
-            // Fallback a cookies
+            // 2. Intentar leer de sessionStorage
+            try {
+                var sessionData = sessionStorage.getItem('sm_selected_location');
+                if (sessionData) {
+                    data = JSON.parse(sessionData);
+                    if (data && data.comuna_name) {
+                        return data;
+                    }
+                }
+            } catch (e) {}
+
+            // 3. Fallback a cookies
             var raw = document.cookie.split('; ').reduce(function (acc, part) {
                 var idx = part.indexOf('=');
                 var key = part.substring(0, idx);
@@ -506,17 +632,19 @@
             }, null);
 
             if (!raw) {
-                console.log('[SM-LOCATION] parseCookie - No data found (sessionStorage or cookies)');
                 return null;
             }
 
             try {
                 data = JSON.parse(decodeURIComponent(raw));
-                console.log('[SM-LOCATION] parseCookie - Found in cookies:', data);
                 return data;
             } catch (e) {
-                console.log('[SM-LOCATION] parseCookie - Parse error:', e);
-                return null;
+                try {
+                    data = JSON.parse(raw);
+                    return data;
+                } catch (e2) {
+                    return null;
+                }
             }
         },
     };
@@ -524,19 +652,23 @@
     $(document).ready(function () {
         SmLocationPopup.init();
 
-        // Actualizar el texto del shortcode cuando cambia la ubicación (sin recargar)
-        $(document).on('sm_location_changed', function (e, data) {
-            var selectedData = sessionStorage.getItem('sm_selected_location');
-            if (selectedData) {
-                try {
-                    var locationData = JSON.parse(selectedData);
-                    var displayText = locationData.region_name.trim() + ' - ' + locationData.comuna_name;
-                    var $trigger = $('.sm-location-popup-trigger');
-                    $trigger.html(displayText + ' <span class="sm-trigger-change">(cambiar)</span>');
-                    console.log('[SM-LOCATION] Updated trigger text:', displayText);
-                } catch (e) {
-                    console.log('[SM-LOCATION] Error updating trigger text:', e);
-                }
+        // Actualizar el texto del shortcode cuando cambia la ubicación
+        $(document).on('sm_location_changed sm_location_selected', function (e, data) {
+            var saved = SmLocationPopup.parseCookie();
+            if (saved && saved.comuna_name) {
+                SmLocationPopup.updateTriggerText(saved.region_name, saved.comuna_name);
+            }
+        });
+
+        // Otros widgets de "agregar al carrito" (por ejemplo id-add-to-cart.js)
+        // avisan aqui cuando WooCommerce responde con error sin agregar nada.
+        // Si no hay ubicacion seleccionada, es casi seguro que esa es la causa
+        // (es la primera validacion que corre multiloca-lite), asi que se abre
+        // el modal de seleccion en vez de dejar el error sin explicacion.
+        $(document).on('sm_add_to_cart_error', function () {
+            var saved = SmLocationPopup.parseCookie();
+            if (!saved || !saved.comuna_name) {
+                SmLocationPopup.openModal();
             }
         });
     });

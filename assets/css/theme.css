@@ -44,7 +44,7 @@ body.single-product .product .price {
 
 /* Botones de cantidad Mas/Menos */
 .quantity {
-    display: inline-flex !important;
+    display: inline-flex;
     align-items: center !important;
     gap: 0 !important;
     margin-right: 15px !important;
@@ -418,9 +418,31 @@ input.single_add_to_cart_button.sm-out-of-stock:hover {
     color: #999 !important;
 }
 
+/* Badge "Sin existencias" (reemplaza el <p class="stock out-of-stock"> de WooCommerce) */
+.sm-out-of-stock-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: #fdecea;
+    color: #a00;
+    border: 1px solid #f5c2c0;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+.sm-out-of-stock-badge__icon {
+    line-height: 1;
+}
+
 .single-product input.qty.disabled,
 .single-product select.disabled {
     background-color: #f5f5f5 !important;
     cursor: not-allowed !important;
     opacity: 0.6 !important;
+}
+
+.woocommerce-product-gallery__trigger {
+    z-index: 9 !important;
 }

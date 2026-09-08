@@ -73,7 +73,13 @@ if (!function_exists('dd')) {
 add_filter( 'woocommerce_is_checkout_block_default', '__return_false' );
 
 
-add_action( 'get_custom_logo', 'add_custom_text_before_shop', 15 );
+// get_custom_logo no se dispara con el header actual del sitio (Elementor no
+// llama a esta funcion de WP core), por lo que el modal de ubicacion nunca
+// se imprimia. wp_footer si se ejecuta en todas las paginas del frontend.
+add_action( 'wp_footer', 'add_custom_text_before_shop' );
 function add_custom_text_before_shop() {
+    if ( is_admin() ) {
+        return;
+    }
     echo do_shortcode('[socomarca_location_stock]');
 }

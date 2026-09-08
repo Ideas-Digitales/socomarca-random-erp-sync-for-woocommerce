@@ -11,6 +11,7 @@ use Socomarca\RandomERP\Ajax\BrandAjaxHandler;
 use Socomarca\RandomERP\Ajax\StockAjaxHandler;
 use Socomarca\RandomERP\Ajax\WarehouseAjaxHandler;
 use Socomarca\RandomERP\Ajax\CartWarehouseSwitchHandler;
+use Socomarca\RandomERP\Ajax\OrderReorderAjaxHandler;
 use Socomarca\RandomERP\Ajax\CombinedAjaxHandler;
 use Socomarca\RandomERP\Ajax\CronSyncAjaxHandler;
 use Socomarca\RandomERP\Admin\AdminPages;
@@ -26,6 +27,7 @@ use Socomarca\RandomERP\Filters\CheckoutShippingFilter;
 use Socomarca\RandomERP\Filters\LocationProductFilter;
 use Socomarca\RandomERP\Filters\LocationStockFilter;
 use Socomarca\RandomERP\Filters\ProductVisibilityFilter;
+use Socomarca\RandomERP\Filters\JetSearchFilter;
 use Socomarca\RandomERP\Services\DocumentService;
 use Socomarca\RandomERP\Services\CronSyncService;
 use Socomarca\RandomERP\Shortcodes\LocationStockShortcode;
@@ -34,10 +36,13 @@ use Socomarca\RandomERP\Ajax\UserRegisterAjaxHandler;
 use Socomarca\RandomERP\Compat\MultilocationBlockFix;
 use Socomarca\RandomERP\Frontend\ProductPageCustomizer;
 use Socomarca\RandomERP\Frontend\ProductStockValidator;
+use Socomarca\RandomERP\Frontend\StockBadgeCustomizer;
 use Socomarca\RandomERP\Frontend\ZeroPriceValidator;
 use Socomarca\RandomERP\Services\LocationOrderNotificationService;
 use Socomarca\RandomERP\Frontend\CheckoutBillingFields;
 use Socomarca\RandomERP\Frontend\CheckoutStorePickup;
+use Socomarca\RandomERP\Frontend\OrderReorder;
+use Socomarca\RandomERP\Frontend\OrderWarehouseMeta;
 
 class Plugin {
     
@@ -72,6 +77,7 @@ class Plugin {
         new StockAjaxHandler();
         new CombinedAjaxHandler();
         new CartWarehouseSwitchHandler();
+        new OrderReorderAjaxHandler();
         new CronSyncAjaxHandler();
         new UserRegisterAjaxHandler();
         
@@ -97,13 +103,17 @@ class Plugin {
         new LocationProductFilter();
         new LocationStockFilter();
         new ProductVisibilityFilter();
+        new JetSearchFilter();
         new CheckoutShippingFilter();
         new MultilocationBlockFix();
         new ProductPageCustomizer();
         new ProductStockValidator();
+        new StockBadgeCustomizer();
         new ZeroPriceValidator();
         new CheckoutBillingFields();
         new CheckoutStorePickup();
+        new OrderReorder();
+        new OrderWarehouseMeta();
         new LocationOrderNotificationService();
 
     }

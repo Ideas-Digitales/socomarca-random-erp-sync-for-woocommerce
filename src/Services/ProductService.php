@@ -5,7 +5,9 @@ namespace Socomarca\RandomERP\Services;
 use Exception;
 
 class ProductService extends BaseApiService {
-    
+
+    private $brandCodeMap = null;
+
     public function getProducts() {
                 
         $products = $this->makeApiRequest('/productos?tipr=FPN');
@@ -120,16 +122,64 @@ class ProductService extends BaseApiService {
     }
     
     private function processProduct($product) {
-        
+
         $category_ids = $this->findProductCategories($product);
-        
-        
+        $brand_term_id = $this->getBrandTermId(isset($product['MRPR']) ? $product['MRPR'] : '');
+
+
         $existing_product_id = \wc_get_product_id_by_sku($product['KOPR']);
-        
+
         if ($existing_product_id) {
-            return $this->updateExistingProduct($existing_product_id, $product, $category_ids);
+            return $this->updateExistingProduct($existing_product_id, $product, $category_ids, $brand_term_id);
         } else {
-            return $this->createNewProduct($product, $category_ids);
+            return $this->createNewProduct($product, $category_ids, $brand_term_id);
+        }
+    }
+
+    /**
+     * Busca el term_id de 'pwb-brand' asociado al código de marca del ERP (MRPR).
+     * El mapa código->term_id se construye una sola vez por instancia (por lote).
+     */
+    private function getBrandTermId($brand_code) {
+        if (empty($brand_code)) {
+            return null;
+        }
+
+        if ($this->brandCodeMap === null) {
+            $this->brandCodeMap = $this->loadBrandCodeMap();
+        }
+
+        return isset($this->brandCodeMap[$brand_code]) ? $this->brandCodeMap[$brand_code] : null;
+    }
+
+    private function loadBrandCodeMap() {
+        $map = [];
+
+        if (!\taxonomy_exists('pwb-brand')) {
+            return $map;
+        }
+
+        global $wpdb;
+
+        $results = $wpdb->get_results("
+            SELECT tm.meta_value AS code, tt.term_id AS term_id
+            FROM {$wpdb->termmeta} tm
+            INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_id = tm.term_id
+            WHERE tm.meta_key = 'random_erp_code' AND tt.taxonomy = 'pwb-brand'
+        ");
+
+        foreach ($results as $row) {
+            if ($row->code !== '') {
+                $map[$row->code] = (int) $row->term_id;
+            }
+        }
+
+        return $map;
+    }
+
+    private function assignBrand($product_id, $brand_term_id) {
+        if ($brand_term_id) {
+            \wp_set_object_terms($product_id, $brand_term_id, 'pwb-brand');
         }
     }
     
@@ -229,7 +279,7 @@ class ProductService extends BaseApiService {
         return (!empty($terms) && !\is_wp_error($terms)) ? $terms[0] : null;
     }
     
-    private function updateExistingProduct($product_id, $product, $category_ids) {
+    private function updateExistingProduct($product_id, $product, $category_ids, $brand_term_id = null) {
         $wc_product = \wc_get_product($product_id);
         if (!$wc_product) {
             return ['success' => false, 'error' => "Error obteniendo producto existente: {$product['KOPR']}"];
@@ -251,6 +301,8 @@ class ProductService extends BaseApiService {
         }
 
         $wc_product->save();
+
+        $this->assignBrand($product_id, $brand_term_id);
 
         $this->saveProductMeta($product_id, $product);
 
@@ -287,11 +339,11 @@ class ProductService extends BaseApiService {
     }
     
     
-    private function createNewProduct($product, $category_ids) {
-        return $this->createSimpleProduct($product, $category_ids);
+    private function createNewProduct($product, $category_ids, $brand_term_id = null) {
+        return $this->createSimpleProduct($product, $category_ids, $brand_term_id);
     }
-    
-    private function createSimpleProduct($product, $category_ids) {
+
+    private function createSimpleProduct($product, $category_ids, $brand_term_id = null) {
         $new_product = new \WC_Product_Simple();
         $new_product->set_name($product['NOKOPR']);
         $new_product->set_sku($product['KOPR']);
@@ -300,19 +352,21 @@ class ProductService extends BaseApiService {
         $new_product->set_manage_stock(true); // Habilitar gestión de stock para productos simples
         $new_product->set_stock_quantity(0);
         $new_product->set_regular_price(0); // Precio inicial 0 para que sea "comprable"
-        
+
         if (!empty($category_ids)) {
             $new_product->set_category_ids($category_ids);
         }
-        
+
         $product_id = $new_product->save();
-        
+
         if (!$product_id) {
             return ['success' => false, 'error' => "Error creando producto simple: {$product['KOPR']}"];
         }
-        
+
+        $this->assignBrand($product_id, $brand_term_id);
+
         $this->saveProductMeta($product_id, $product);
-        
+
         return ['success' => true, 'action' => 'created'];
     }
     

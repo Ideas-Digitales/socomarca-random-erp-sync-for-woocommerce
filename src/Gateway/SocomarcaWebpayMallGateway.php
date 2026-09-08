@@ -113,7 +113,10 @@ class SocomarcaWebpayMallGateway extends WC_Payment_Gateway {
         $this->log("Procesando pago para Orden ID: {$order_id}");
 
         // 1. Determine the Warehouse/Location ID
-        $store_id = get_post_meta($order_id, 'sm_pickup_store_id', true);
+        $store_id = $order->get_meta('_sm_order_warehouse_id', true);
+        if (empty($store_id)) {
+            $store_id = $order->get_meta('sm_pickup_store_id', true);
+        }
         if (empty($store_id)) {
             $commune = $order->get_shipping_city() ?: $order->get_billing_city();
             $store_id = $this->getWarehouseIdByCommune($commune);

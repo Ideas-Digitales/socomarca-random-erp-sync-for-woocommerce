@@ -104,6 +104,7 @@ class DocumentService extends BaseApiService {
                     'tido'          => $tido,
                     'modalidad'     => $modalidad,
                     'lineas'        => $lines,
+                    
                     'observacion'   => $observacion,
                     'kobo'          => $this->get_warehouse_kobo_from_order($order),
                     'texto1'        => $payment_method . ' - Orden #' . $order_id,
@@ -224,7 +225,11 @@ class DocumentService extends BaseApiService {
      */
     private function get_warehouse_kobo_from_order($order): string {
         $order_id = $order->get_id();
-        $store_id = (int) get_post_meta($order_id, 'sm_pickup_store_id', true);
+        $store_id = (int) $order->get_meta('_sm_order_warehouse_id', true);
+
+        if (empty($store_id)) {
+            $store_id = (int) $order->get_meta('sm_pickup_store_id', true);
+        }
 
         if (empty($store_id)) {
             // Intentar resolver por ciudad de envío
@@ -272,6 +277,7 @@ class DocumentService extends BaseApiService {
     }
     
     private function build_order_lines($order) {
+        
         $lines = [];
         
         foreach ($order->get_items() as $item) {

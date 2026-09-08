@@ -66,7 +66,11 @@ class LocationOrderNotificationService {
         }
 
         // 1. Obtener el term_id de la location asociada al pedido
-        $store_id = (int) get_post_meta($order_id, 'sm_pickup_store_id', true);
+        $store_id = (int) $order->get_meta('_sm_order_warehouse_id', true);
+
+        if (empty($store_id)) {
+            $store_id = (int) $order->get_meta('sm_pickup_store_id', true);
+        }
 
         if (empty($store_id)) {
             // Intentar resolver por ciudad de envío si no hay retiro en tienda

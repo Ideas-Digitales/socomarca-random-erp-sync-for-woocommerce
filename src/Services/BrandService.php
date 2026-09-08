@@ -24,18 +24,18 @@ class BrandService extends BaseApiService {
     
     private function registerTaxonomyHooks() {
         add_action('init', [$this, 'registerTaxonomies']);
-        add_action('product_brand_add_form_fields', [$this, 'addBrandFields']);
-        add_action('product_brand_edit_form_fields', [$this, 'editBrandFields']);
-        add_action('create_product_brand', [$this, 'saveBrandFields']);
-        add_action('edit_product_brand', [$this, 'saveBrandFields']);
-        add_filter('manage_edit-product_brand_columns', [$this, 'addBrandColumns']);
-        add_action('manage_product_brand_custom_column', [$this, 'addBrandColumnContent'], 10, 3);
+        add_action('pwb-brand_add_form_fields', [$this, 'addBrandFields']);
+        add_action('pwb-brand_edit_form_fields', [$this, 'editBrandFields']);
+        add_action('create_pwb-brand', [$this, 'saveBrandFields']);
+        add_action('edit_pwb-brand', [$this, 'saveBrandFields']);
+        add_filter('manage_edit-pwb-brand_columns', [$this, 'addBrandColumns']);
+        add_action('manage_pwb-brand_custom_column', [$this, 'addBrandColumnContent'], 10, 3);
     }
-    
+
     public function registerTaxonomies() {
-        // Only register if WooCommerce Brands plugin is not active
-        if (!taxonomy_exists('product_brand')) {
-            register_taxonomy('product_brand', ['product'], [
+        // Solo registrar de respaldo si Perfect WooCommerce Brands no está activo
+        if (!taxonomy_exists('pwb-brand')) {
+            register_taxonomy('pwb-brand', ['product'], [
                 'labels' => [
                     'name' => 'Marcas',
                     'singular_name' => 'Marca',
@@ -203,7 +203,7 @@ class BrandService extends BaseApiService {
                         
                         if ($existing_term) {
                             // Actualizar marca existente
-                            $result = wp_update_term($existing_term->term_id, 'product_brand', [
+                            $result = wp_update_term($existing_term->term_id, 'pwb-brand', [
                                 'name' => $brand_name,
                                 'slug' => sanitize_title($brand_name)
                             ]);
@@ -217,7 +217,7 @@ class BrandService extends BaseApiService {
                             }
                         } else {
                             // Crear nueva marca
-                            $result = wp_insert_term($brand_name, 'product_brand', [
+                            $result = wp_insert_term($brand_name, 'pwb-brand', [
                                 'slug' => sanitize_title($brand_name)
                             ]);
                             
@@ -259,7 +259,7 @@ class BrandService extends BaseApiService {
     
     private function findBrandByCode($code) {
         $terms = get_terms([
-            'taxonomy' => 'product_brand',
+            'taxonomy' => 'pwb-brand',
             'meta_query' => [
                 [
                     'key' => 'random_erp_code',
@@ -269,7 +269,12 @@ class BrandService extends BaseApiService {
             ],
             'hide_empty' => false
         ]);
-        
+
+        if (is_wp_error($terms)) {
+            $this->log('Error buscando marca por código ' . $code . ': ' . $terms->get_error_message());
+            return null;
+        }
+
         return !empty($terms) ? $terms[0] : null;
     }
     
@@ -278,15 +283,19 @@ class BrandService extends BaseApiService {
             $this->log('Iniciando eliminación de todas las marcas');
             
             $terms = get_terms([
-                'taxonomy' => 'product_brand',
+                'taxonomy' => 'pwb-brand',
                 'hide_empty' => false
             ]);
-            
+
+            if (is_wp_error($terms)) {
+                throw new \Exception('Error obteniendo marcas: ' . $terms->get_error_message());
+            }
+
             $deleted = 0;
             $errors = 0;
-            
+
             foreach ($terms as $term) {
-                $result = wp_delete_term($term->term_id, 'product_brand');
+                $result = wp_delete_term($term->term_id, 'pwb-brand');
                 
                 if (!is_wp_error($result) && $result !== false) {
                     $deleted++;

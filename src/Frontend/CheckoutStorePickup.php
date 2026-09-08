@@ -148,9 +148,17 @@ class CheckoutStorePickup {
     public function saveStoreSelection(int $order_id): void {
         $store_id = isset($_POST['sm_pickup_store_id']) ? sanitize_text_field(wp_unslash($_POST['sm_pickup_store_id'])) : '';
 
-        if (!empty($store_id)) {
-            update_post_meta($order_id, 'sm_pickup_store_id', $store_id);
+        if (empty($store_id)) {
+            return;
         }
+
+        $order = wc_get_order($order_id);
+        if (!$order) {
+            return;
+        }
+
+        $order->update_meta_data('sm_pickup_store_id', $store_id);
+        $order->save();
     }
 
     public function displayStoreInEmail($order): void {
@@ -158,7 +166,7 @@ class CheckoutStorePickup {
             return;
         }
 
-        $store_id = get_post_meta($order->get_id(), 'sm_pickup_store_id', true);
+        $store_id = $order->get_meta('sm_pickup_store_id', true);
 
         if (empty($store_id)) {
             return;
@@ -178,7 +186,7 @@ class CheckoutStorePickup {
             return;
         }
 
-        $store_id = get_post_meta($order->get_id(), 'sm_pickup_store_id', true);
+        $store_id = $order->get_meta('sm_pickup_store_id', true);
 
         if (empty($store_id)) {
             return;

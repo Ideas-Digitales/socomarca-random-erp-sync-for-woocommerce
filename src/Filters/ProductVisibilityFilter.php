@@ -14,7 +14,7 @@ class ProductVisibilityFilter {
         add_filter('posts_where', [$this, 'addSqlWhereClause'], 10, 2);
         add_filter('woocommerce_related_products', [$this, 'filterRelatedProducts'], 10, 3);
         add_filter('jet-engine/query-builder/query', [$this, 'filterJetEngineQuery']);
-        add_filter('jet-search/products/query-args', [$this, 'filterJetSearchProducts']);
+        add_filter('jet-search/ajax-search/query-args', [$this, 'filterJetSearchProducts']);
         add_filter('rest_post_query', [$this, 'filterRestPostQuery'], 10, 2);
     }
 
@@ -145,7 +145,10 @@ class ProductVisibilityFilter {
             return $args;
         }
 
-        if (($args['post_type'] ?? null) !== 'product') {
+        $post_type  = $args['post_type'] ?? '';
+        $post_types = is_array($post_type) ? $post_type : [$post_type];
+
+        if (!in_array('product', $post_types, true)) {
             return $args;
         }
 

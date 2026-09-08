@@ -72,17 +72,21 @@ class ProductStockValidator {
                 var hasStock = <?php echo $has_stock; ?>;
                 var locationId = <?php echo $location_id; ?>;
 
-                if (locationId && hasStock === false) {
+                // Sin bodega seleccionada se trata igual que sin stock: no se
+                // puede confirmar disponibilidad, asi que se bloquea el
+                // agregar al carrito y se pide elegir una ubicacion.
+                if (!locationId || hasStock === false) {
                     console.log('[SM-VALIDATOR] Producto sin stock en ubicación seleccionada, deshabilitando carrito');
 
                     // Ocultar el precio y el mensaje de stock disponible
                     //$('p.stock').hide();
                     //$('.price').hide();
 
-                    $(".stock in-stock").hide();
-                    $(".sm-product-extra-meta").hide();
-                    $("form.cart").hide();
-                    $(".stock.in-stock").text('Sin existencias').css('color', '#a00').show();
+                    $(".stock.in-stock").hide();
+                    //$(".sm-product-extra-meta").hide();
+                    //$("form.cart").hide();
+                    //$(".stock.in-stock").text('Sin existencias').css('color', '#a00').show();
+                    
 
                     // Cambiar botón de compra
                     var $form = $('form.cart');
@@ -103,14 +107,6 @@ class ProductStockValidator {
 
                             console.log('[SM-VALIDATOR] Botón deshabilitado');
                         }
-                    }
-
-                    // Abrir modal de ubicación
-                    if (typeof SmLocationPopup !== 'undefined' && SmLocationPopup.openModal) {
-                        setTimeout(function () {
-                            console.log('[SM-VALIDATOR] Abriendo modal de ubicación');
-                            SmLocationPopup.openModal();
-                        }, 500);
                     }
                 }
             });
