@@ -12,8 +12,16 @@ class ProductPageCustomizer {
         // Categoria hoja encima del titulo (prioridad 4, el titulo es 5)
         add_action('woocommerce_single_product_summary', [$this, 'displayLeafCategory'], 4);
 
-        // Meta (Stock, SKU, Categorias) antes del formulario de carrito
-        add_action('woocommerce_before_add_to_cart_form', [$this, 'displayProductExtraMeta']);
+        // Meta (Stock, SKU, Categorias) antes del formulario de carrito.
+        // OJO: se engancha en woocommerce_single_product_summary (prioridad 29,
+        // justo antes que woocommerce_template_single_add_to_cart en 30) y NO
+        // en woocommerce_before_add_to_cart_form a proposito. Ese hook vive
+        // DENTRO del if ($product->is_in_stock()) de
+        // templates/single-product/add-to-cart/simple.php, asi que con
+        // productos sin stock en ninguna bodega (is_in_stock() falso, ver
+        // ProductStockValidator::renderFallbackButtonIfMissing()) nunca
+        // llegaba a dispararse y la pagina se quedaba sin SKU ni categorias.
+        add_action('woocommerce_single_product_summary', [$this, 'displayProductExtraMeta'], 29);
 
         // Quitar el meta default de WooCommerce (SKU/categorias) para evitar duplicados
         remove_action('woocommerce_single_product_summary', 'woocommerce_template_single_meta', 40);
@@ -119,6 +127,40 @@ class ProductPageCustomizer {
             error_log('[SM-PRODUCT-META] Product ' . $product->get_id() . ' is variable, stock display will be updated by JS');
         }
 
+        /**
+         * DISEÑO "SIN STOCK" NO UNIFICADO (conocido, pendiente):
+         *
+         * Para productos simples, "sin stock en la bodega seleccionada" se
+         * comunica cambiando el propio botón de compra: texto -> "Sin Stock",
+         * clase -> sm-out-of-stock (ver ProductStockValidator.php, que hace
+         * $addToCartBtn.html('Sin Stock').addClass('sm-out-of-stock'), y su
+         * fallback renderFallbackButtonIfMissing() para cuando ni siquiera hay
+         * stock en NINGUNA bodega).
+         *
+         * Para productos variables (este bloque, activo solo si
+         * $product->get_type() === 'variable') el mismo aviso se muestra en
+         * un elemento totalmente distinto: este <div class="sm-meta-item
+         * sm-stock"> junto al SKU/categoria, como texto rojo suelto. El boton
+         * de compra en si (ver assets/js/variations-helper.js,
+         * initAddToCartGating() -> lockButton()) solo queda gris/disabled
+         * pero SIN cambiar su texto ni agregar la clase sm-out-of-stock -- se
+         * le agrega sm-btn-gated en su lugar. Visualmente ambos botones
+         * deshabilitados se ven casi iguales (mismos colores en theme.css),
+         * pero el mensaje de "por que" no esta en el mismo lugar ni tiene el
+         * mismo texto.
+         *
+         * No se unifico este flujo junto con el de productos simples porque,
+         * al momento de escribir esto, el catalogo no tiene NINGUN producto
+         * variable (0 variable / 2981 simple en la taxonomia product_type),
+         * asi que no habia forma de probar un cambio real contra el sitio.
+         * Si se unifica en el futuro, el cambio equivalente al de
+         * ProductStockValidator.php seria: en lockButton() de
+         * variations-helper.js, ademas de disabled/sm-btn-gated, cambiar el
+         * texto del boton a "Sin Stock" y agregar la clase sm-out-of-stock
+         * (o reemplazar sm-btn-gated por la misma clase), y decidir si este
+         * bloque de texto rojo se mantiene como complemento o se retira por
+         * quedar redundante con el boton.
+         */
         ?>
         <div class="sm-product-extra-meta">
             <?php if ($product->get_type() == 'variable'): ?>

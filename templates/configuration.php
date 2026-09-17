@@ -2,7 +2,7 @@
     <h1>Configuración Socomarca</h1>
     <p>Panel de administración para la sincronización con Random ERP.</p>
     
-    <h2 class="nav-tab-wrapper">
+    <h2 class="nav-tab-wrapper" id="socomarca-nav-tab-wrapper">
         <a href="#tab-sync" class="nav-tab nav-tab-active" id="tab-sync-link">Sincronización</a>
         <a href="#tab-config" class="nav-tab" id="tab-config-link">Configuración</a>
         <a href="#tab-admin" class="nav-tab" id="tab-admin-link">Administración</a>

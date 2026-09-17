@@ -133,6 +133,11 @@ class PriceListService extends BaseApiService {
             delete_option('sm_total_processed_prices');
             delete_option('sm_total_updated_prices');
             delete_transient('sm_hidden_product_ids');
+
+            // Purge general al cerrar el sync completo: cubre paginas de
+            // shop/categoria paginadas y fragmentos (widgets, productos
+            // relacionados) que el purge por producto individual no alcanza.
+            do_action('litespeed_purge_all');
         }
 
         return [
@@ -178,16 +183,32 @@ class PriceListService extends BaseApiService {
 
         $product->set_regular_price($price);
         $product->set_price($price);
-        
+
         if (!empty($unidades) && isset($unidades[0]['stockventa'])) {
             $product->set_manage_stock(true);
             $product->set_stock_quantity($unidades[0]['stockventa']);
         }
-        
+
         $product->save();
         $updated = true;
 
+        // Sin esto, LiteSpeed Cache (TTL de hasta 7 dias) sigue sirviendo el
+        // HTML cacheado con el precio anterior en category/shop mientras el
+        // single product page (purgado por otro camino o visitado despues)
+        // ya muestra el precio nuevo, mostrando precios distintos para el
+        // mismo producto segun la pagina.
+        $this->purgeProductCache($product->get_id());
+
         return ['success' => true, 'error' => null, 'updated' => $updated];
+    }
+
+    /**
+     * Purga la cache de LiteSpeed para un producto (incluye sus archivos de
+     * categoria asociados, segun el comportamiento por defecto de LiteSpeed
+     * al purgar un post). No-op si LiteSpeed Cache no esta activo.
+     */
+    private function purgeProductCache($product_id) {
+        do_action('litespeed_purge_post', $product_id);
     }
 
     /**

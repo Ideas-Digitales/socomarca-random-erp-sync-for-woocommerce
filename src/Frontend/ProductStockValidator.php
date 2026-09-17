@@ -15,6 +15,54 @@ class ProductStockValidator {
 
     public function __construct() {
         add_action('wp_footer', [$this, 'renderStockValidator'], 99);
+        add_action('woocommerce_single_product_summary', [$this, 'renderFallbackButtonIfMissing'], 31);
+    }
+
+    /**
+     * Cuando el producto no tiene stock en NINGUNA bodega (is_in_stock() falso
+     * de forma legitima, no por un desfase de bodega), WooCommerce ni siquiera
+     * imprime <form class="cart"> -- ver woocommerce_template_single_add_to_cart()
+     * (prioridad 30 en el mismo hook) y templates/single-product/add-to-cart/simple.php,
+     * que retorna temprano si !is_in_stock(). Sin boton en el DOM, el JS de
+     * renderStockValidator() no tiene nada que deshabilitar, y StockBadgeCustomizer
+     * tampoco imprime texto (renderOutOfStockHtml() devuelve ''), asi que la
+     * pagina queda completamente en blanco donde deberia estar el boton.
+     *
+     * Aqui se imprime, a proposito, el mismo boton deshabilitado "Sin Stock"
+     * (misma clase sm-out-of-stock) que usan los productos que SI tienen
+     * <form class="cart"> pero sin stock en la bodega seleccionada, para que
+     * el diseño sea uno solo sin importar la causa de la falta de stock.
+     *
+     * Se limita a productos simples: los productos variables tienen su propio
+     * diseño de "sin stock" (ver variations-helper.js::initAddToCartGating()
+     * y ProductPageCustomizer::displayProductExtraMeta()), documentado pero
+     * intencionalmente no tocado aqui -- no hay ningun producto variable en el
+     * catalogo actual para verificar un cambio contra el sitio real.
+     */
+    public function renderFallbackButtonIfMissing(): void {
+        global $product;
+
+        if (!$product instanceof \WC_Product || $product->get_type() !== 'simple') {
+            return;
+        }
+
+        // Si no es purchasable por otra razon (precio invalido, regla de
+        // B2BKing, etc.), no es un tema de stock: no mostrar "Sin Stock" para
+        // no dar un mensaje enganoso sobre la causa real.
+        if (!$product->is_purchasable()) {
+            return;
+        }
+
+        // El form.cart real ya se imprimio en la prioridad 30 de este mismo hook.
+        if ($product->is_in_stock()) {
+            return;
+        }
+
+        ?>
+        <form class="cart" action="<?php echo esc_url($product->get_permalink()); ?>" method="post" enctype="multipart/form-data">
+            <button type="submit" name="add-to-cart" value="<?php echo esc_attr($product->get_id()); ?>" class="single_add_to_cart_button disabled sm-out-of-stock" disabled="disabled">Sin Stock</button>
+        </form>
+        <?php
     }
 
     /**
@@ -44,7 +92,7 @@ class ProductStockValidator {
 
         $location_id = $this->getSelectedLocation();
         $product_id = $product->get_id();
-        
+
         // Si no hay ubicación, no podemos validar stock, así que asumimos "desconocido" pero no bloqueamos de forma permanente
         if (!$location_id) {
             $has_stock = 'null';
@@ -57,13 +105,42 @@ class ProductStockValidator {
             error_log('[SM-VALIDATOR-PHP] Rendering: product_id=' . $product_id . ', location_id=' . $location_id . ', has_stock=' . $has_stock . ', stock_qty=' . $stock_qty);
         }
 
+        // Estado AGREGADO de WooCommerce (independiente de la bodega seleccionada).
+        // Si is_in_stock() es false, WooCommerce ni siquiera imprime <form class="cart">
+        // (ver templates/single-product/add-to-cart/simple.php), asi que este
+        // script nunca llega a encontrar el boton para deshabilitarlo: el boton
+        // simplemente nunca existio en el DOM. Esto distingue ese caso ("bug de
+        // agregado de stock") del caso en que el boton SI se imprime y es este
+        // mismo script el que lo deshabilita mas abajo.
+        $wc_stock_status = $product->get_stock_status();
+        $wc_stock_qty    = $product->get_stock_quantity();
+        $wc_is_in_stock  = $product->is_in_stock() ? 'true' : 'false';
+        $wc_is_purchasable = $product->is_purchasable() ? 'true' : 'false';
+        error_log(sprintf(
+            '[SM-VALIDATOR-PHP-WC] product_id=%d, wc_stock_status=%s, wc_stock_qty=%s, wc_is_in_stock=%s, wc_is_purchasable=%s',
+            $product_id,
+            $wc_stock_status,
+            var_export($wc_stock_qty, true),
+            $wc_is_in_stock,
+            $wc_is_purchasable
+        ));
+
         ?>
         <script type="text/javascript">
         // Variable global para que location-stock-popup.js pueda acceder
         window.smProductHasStock = <?php echo $has_stock; ?>;
         window.smProductId = <?php echo $product_id; ?>;
         window.smSelectedLocation = <?php echo $location_id; ?>;
+        // Estado agregado de WooCommerce (_stock_status), independiente de la
+        // bodega seleccionada. Si wcIsInStock es false, form.cart nunca se
+        // imprimio en el HTML (no es este script deshabilitando el boton).
+        window.smWcStockStatus = <?php echo wp_json_encode($wc_stock_status); ?>;
+        window.smWcStockQty = <?php echo wp_json_encode($wc_stock_qty); ?>;
+        window.smWcIsInStock = <?php echo $wc_is_in_stock; ?>;
+        window.smWcIsPurchasable = <?php echo $wc_is_purchasable; ?>;
         console.log('[SM-VALIDATOR-RENDER] Page rendering with location_id=' + window.smSelectedLocation + ', has_stock=' + window.smProductHasStock);
+        console.log('[SM-VALIDATOR-RENDER-WC] wc_stock_status=' + window.smWcStockStatus + ', wc_stock_qty=' + window.smWcStockQty + ', wc_is_in_stock=' + window.smWcIsInStock + ', wc_is_purchasable=' + window.smWcIsPurchasable);
+        console.log('[SM-VALIDATOR-RENDER-DOM] form.cart existe en el DOM: ' + (jQuery('form.cart').length > 0) + ' (si es false, el boton nunca se imprimio; WooCommerce lo omitio en el template por _stock_status=' + window.smWcStockStatus + ')');
 
         (function ($) {
             $(document).ready(function () {

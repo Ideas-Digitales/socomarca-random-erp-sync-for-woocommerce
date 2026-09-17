@@ -22,15 +22,6 @@ define('SOCOMARCA_ERP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SOCOMARCA_ERP_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('SOCOMARCA_ERP_VERSION', '1.0.1');
 
-if (!class_exists('WooCommerce')) {
-
-    add_action('admin_notices', function() {
-        echo '<div class="error"><p>' . esc_html__('Socomarca Random ERP Sync for WooCommerce requiere WooCommerce para funcionar.', 'socomarca-random-erp-sync-for-woocommerce') . '</p></div>';
-    });
-} else {
-
-}
-
 require_once SOCOMARCA_ERP_PLUGIN_DIR . 'src/Autoloader.php';
 Socomarca\RandomERP\Autoloader::getInstance()->register();
 
@@ -38,18 +29,24 @@ use Socomarca\RandomERP\Plugin;
 
 add_action('plugins_loaded', function() {
 
-    error_log('SOCOMARCA: plugins_loaded fired, PHP=' . PHP_VERSION . ', WC=' . (class_exists('WooCommerce') ? 'yes' : 'no'));
+    if (!class_exists('WooCommerce')) {
+
+        add_action('admin_notices', function() {
+            echo '<div class="error"><p>' . esc_html__('Socomarca Random ERP Sync for WooCommerce requiere WooCommerce para funcionar.', 'socomarca-random-erp-sync-for-woocommerce') . '</p></div>';
+        });
+        return;
+    }
 
     if (version_compare(PHP_VERSION, '8.0', '<')) {
-    
+
         add_action('admin_notices', function() {
             echo '<div class="error"><p>' . esc_html__('Socomarca Random ERP Sync requiere PHP 8.0 o superior.', 'socomarca-random-erp-sync-for-woocommerce') . '</p></div>';
         });
     } else {
         try {
-                    
+
             Plugin::getInstance();
-        
+
         } catch (\Throwable $e) {
 
             add_action('admin_notices', function() use ($e) {

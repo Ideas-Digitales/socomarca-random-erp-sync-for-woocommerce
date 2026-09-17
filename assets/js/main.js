@@ -918,11 +918,11 @@ jQuery(document).ready(function($) {
     }
 
     // Manejar tabs de WordPress
-    $('.nav-tab-wrapper .nav-tab').click(function(e) {
+    $('#socomarca-nav-tab-wrapper .nav-tab').click(function(e) {
         e.preventDefault();
-        
+
         // Remover clases activas
-        $('.nav-tab').removeClass('nav-tab-active');
+        $('#socomarca-nav-tab-wrapper .nav-tab').removeClass('nav-tab-active');
         $('.tab-content').removeClass('active').hide();
         
         // Agregar clase activa al tab clickeado

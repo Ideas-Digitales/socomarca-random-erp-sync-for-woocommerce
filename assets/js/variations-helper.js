@@ -153,6 +153,31 @@
                 return null;
             }
 
+            // DISEÑO "SIN STOCK" NO UNIFICADO (conocido, pendiente, ver tambien
+            // ProductPageCustomizer::displayProductExtraMeta() en PHP):
+            //
+            // Para productos simples sin stock, ProductStockValidator.php le
+            // CAMBIA EL TEXTO al boton real ("Sin Stock") y le agrega la
+            // clase sm-out-of-stock. Aqui, en cambio, el boton se deja
+            // disabled con su texto ORIGINAL sin tocar (ej: "Añadir al
+            // carrito" en gris) y se agrega sm-btn-gated en vez de
+            // sm-out-of-stock; el `message` recibido ("Sin stock en esta
+            // ubicacion", etc.) NO se pinta en el boton, solo llega hasta
+            // console.log -- el aviso real para el usuario lo escribe
+            // initVariationStockDisplay()/fetchVariationStock() en un
+            // <span> rojo aparte, dentro de .sm-meta-item.sm-stock (ver
+            // ProductPageCustomizer.php), un elemento del DOM totalmente
+            // distinto al boton.
+            //
+            // No se unifico con el diseño de productos simples porque, al
+            // momento de escribir esto, el catalogo no tiene ningun producto
+            // variable (0 variable / 2981 simple en la taxonomia
+            // product_type) para probar el cambio contra el sitio real. Para
+            // unificarlo: ademas de disabled/sm-btn-gated, poner
+            // $btn.html(message || 'Sin Stock') y usar/agregar la clase
+            // sm-out-of-stock aqui, y decidir si el <span> rojo de
+            // .sm-meta-item.sm-stock se mantiene como complemento o se
+            // retira por quedar redundante.
             function lockButton(message) {
                 console.log('[SM-GATING] LOCK button - message:', message);
                 $btn.prop('disabled', true).addClass('sm-btn-gated');

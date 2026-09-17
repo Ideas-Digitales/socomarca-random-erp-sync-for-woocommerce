@@ -99,7 +99,15 @@ class ProductVisibilityFilter {
     }
 
     public function applyExclusionPreGetPosts(\WP_Query $query): void {
-        if (is_admin()) {
+        // is_admin() es true tambien en admin-ajax.php, que es exactamente
+        // donde corre el "Load More" de JetEngine en la grilla de categorias
+        // (accion listing_load_more). Sin el !wp_doing_ajax() aqui, esa
+        // llamada AJAX queda sin excluir productos ocultos/sin precio
+        // mientras la carga inicial (SSR) si los excluye, desalineando el
+        // conjunto de productos entre ambas paginas y duplicando/saltando
+        // items en el scroll infinito. Ver LocationStockFilter::shouldSkip()
+        // para el mismo fix ya aplicado a otro filtro de este plugin.
+        if (is_admin() && !wp_doing_ajax()) {
             return;
         }
 
@@ -184,7 +192,10 @@ class ProductVisibilityFilter {
     }
 
     public function addSqlWhereClause(string $where, \WP_Query $query): string {
-        if (is_admin()) {
+        // Mismo motivo que en applyExclusionPreGetPosts(): no saltarse este
+        // filtro durante admin-ajax.php (Load More de JetEngine), solo en
+        // paginas de admin reales.
+        if (is_admin() && !wp_doing_ajax()) {
             return $where;
         }
 
